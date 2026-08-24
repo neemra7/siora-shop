@@ -453,17 +453,18 @@ const cartProducts = Object.fromEntries(
           </label>
 
           <label>
-            العنوان
-            <input name="address" type="text" autocomplete="street-address" required />
+            طريقة الاستلام
+            <select name="delivery" data-delivery-select required>
+              <option value="" selected disabled>اختاري طريقة الاستلام</option>
+              <option value="delivery_amman" data-delivery-fee="2">توصيل - عمان (+2 د.أ)</option>
+              <option value="delivery_governorates" data-delivery-fee="3">توصيل - محافظات (+3 د.أ)</option>
+              <option value="pickup_jordan_university" data-delivery-fee="2">استلام - الجامعة الأردنية (+2 د.أ)</option>
+            </select>
           </label>
 
-          <label>
-            طريقة الاستلام
-            <select name="delivery" required>
-              <option value="" selected disabled>اختاري طريقة الاستلام</option>
-              <option value="delivery">توصيل</option>
-              <option value="pickup">استلام من الموقع</option>
-            </select>
+          <label data-address-field hidden>
+            العنوان
+            <input name="address" type="text" autocomplete="street-address" />
           </label>
 
           <label>
@@ -567,6 +568,18 @@ const cartProducts = Object.fromEntries(
         document.querySelector("[data-cart-total]");
 
       const productData = cartProducts;
+      const deliverySelect = document.querySelector("[data-delivery-select]");
+      const addressField = document.querySelector("[data-address-field]");
+      const addressInput = addressField?.querySelector("input[name='address']");
+
+      const getDeliveryFee = () => Number(deliverySelect?.selectedOptions[0]?.dataset.deliveryFee || 0);
+      const getDeliveryLabel = () => deliverySelect?.selectedOptions[0]?.textContent?.trim() || "لم يتم الاختيار";
+
+      const updateDeliveryFields = () => {
+        const isDelivery = deliverySelect?.value.startsWith("delivery_") || false;
+        if (addressField) addressField.hidden = !isDelivery;
+        addressInput?.toggleAttribute("required", isDelivery);
+      };
 
       const getCustomization = (id) => customizations.get(id) || { choices: {}, text: {}, imageName: "" };
 
@@ -614,7 +627,7 @@ const cartProducts = Object.fromEntries(
           (sum, [id, value]) =>
             sum + getItemPrice(id) * value,
           0
-        ) + extrasTotal;
+        ) + extrasTotal + getDeliveryFee();
 
 
         count.textContent = String(quantity);
@@ -799,7 +812,8 @@ const cartProducts = Object.fromEntries(
           `الإيميل: ${fields.get("email") || ""}`,
           `حساب الانستغرام: ${fields.get("instagram") || ""}`,
           `العنوان: ${fields.get("address") || ""}`,
-          `طريقة الاستلام: ${fields.get("delivery") || ""}`,
+          `طريقة الاستلام: ${getDeliveryLabel()}`,
+          `رسوم الاستلام: ${getDeliveryFee()} د.أ`,
           `ملاحظات: ${fields.get("notes") || "لا يوجد"}`,
         ].join("\n");
         const orderLines = [...cart.entries()].map(([id, quantity]) => {
@@ -830,6 +844,7 @@ const cartProducts = Object.fromEntries(
 
           formMessage.textContent = "تم إرسال طلبك بنجاح. سنتواصل معك قريبًا.";
           customerForm.reset();
+          updateDeliveryFields();
           cart.clear();
           customizations.clear();
           orderExtras.chocolate = false;
@@ -952,6 +967,13 @@ const cartProducts = Object.fromEntries(
           renderCart();
         });
       });
+
+      deliverySelect?.addEventListener("change", () => {
+        updateDeliveryFields();
+        renderCart();
+      });
+
+      updateDeliveryFields();
 
 
       document.addEventListener("change", (event) => {
