@@ -1,0 +1,961 @@
+---
+import "../styles/global.css";
+
+import ProductCard from "../components/ProductCard.astro";
+import { products } from "../data/product";
+
+const cartProducts = Object.fromEntries(
+  products.map(({ id, name, price, image, customization }) => [
+    id,
+    { name, price, image, customization },
+  ])
+);
+---
+
+<html lang="ar" dir="rtl">
+
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta
+      name="viewport"
+      content="width=device-width"
+    />
+
+    <title>
+      سيورا آرت | قطع تحمل حكاية
+    </title>
+
+    <meta
+      name="description"
+      content="قطع فنية صغيرة، مرسومة ومصممة لتبقى معك."
+    />
+  </head>
+
+
+  <body>
+
+    <!-- =========================
+         HEADER
+    ========================== -->
+
+    <header class="site-header">
+
+      <nav
+        class="navbar"
+        aria-label="التنقل الرئيسي"
+      >
+
+        <a
+          href="/"
+          class="logo"
+          aria-label="سيورا آرت الرئيسية"
+        >
+          سيورا آرت
+        </a>
+
+
+        <div class="nav-links">
+
+          <a href="#products">
+            المتجر
+          </a>
+
+          <a href="#story">
+            حكايتنا
+          </a>
+
+          <a href="#notes">
+            ملاحظات
+          </a>
+
+        </div>
+
+
+        <button
+          class="cart-button"
+          type="button"
+          data-cart-open
+          aria-label="فتح السلة"
+        >
+          <span>السلة</span>
+
+          <b data-cart-count>
+            0
+          </b>
+        </button>
+
+      </nav>
+
+    </header>
+
+
+    <main>
+
+      <!-- =========================
+           HERO
+      ========================== -->
+
+      <section class="hero">
+
+        <div class="hero-copy">
+
+          <p class="kicker">
+            <span></span>
+            أشياء صنعت بحب
+          </p>
+
+
+          <h1>
+            قطعة صغيرة.
+            <br />
+            <em>حكاية كبيرة.</em>
+          </h1>
+
+
+          <p class="hero-description">
+            منتجات فنية مرسومة بعناية،
+            تضيف لمسة تشبهك إلى يومك
+            وإلى هدايا من تحبين.
+          </p>
+
+
+          <div class="hero-actions">
+
+            <a
+              href="#products"
+              class="primary-button"
+            >
+              تصفحي المجموعة
+              <span>←</span>
+            </a>
+
+
+            <a
+              href="#story"
+              class="text-link"
+            >
+              اكتشفي سيورا آرت
+              <span>↗</span>
+            </a>
+
+          </div>
+
+
+          <div class="hero-note">
+
+            <span class="note-mark">
+              ✳
+            </span>
+
+            <span>
+              كل قطعة تصل إليك
+              <br />
+              مغلفة كهدية
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div
+          class="hero-art"
+          aria-label="شعار سيورا آرت"
+        >
+          <img
+            class="hero-logo"
+            src="/images/siora%20logo.jpg"
+            alt="سيورا آرت"
+          />
+
+        </div>
+
+      </section>
+
+
+      <!-- =========================
+           PRODUCTS
+      ========================== -->
+
+      <section
+        id="products"
+        class="shop-section"
+      >
+
+        <div class="section-intro">
+
+          <div>
+
+            <p class="kicker">
+              <span></span>
+              من الاستوديو
+            </p>
+
+            <h2>
+              اختاري ما
+              <br />
+              <em>يشبهك</em>
+            </h2>
+
+          </div>
+
+
+          <p>
+            أعمال فنية تتحول إلى تفاصيل يومية.
+            اجمعي أكثر من قطعة لتصلي إلى هديتك المثالية.
+          </p>
+
+        </div>
+
+
+        <div class="shop-toolbar">
+
+          <span>
+            المجموعة كاملة
+            <b>06</b>
+          </span>
+
+          <span class="toolbar-line"></span>
+
+          <span>
+            مررّي لاكتشاف المزيد ↓
+          </span>
+
+        </div>
+
+
+        <div class="products-carousel" aria-label="منتجات سيورا آرت">
+          <button class="carousel-button carousel-previous" type="button" data-carousel-previous aria-label="المنتجات السابقة">←</button>
+          <div class="products-grid" data-carousel-track>
+            {products.map((product) => (
+              <ProductCard product={product} />
+            ))}
+          </div>
+          <button class="carousel-button carousel-next" type="button" data-carousel-next aria-label="المنتجات التالية">→</button>
+        </div>
+
+      </section>
+
+
+      <!-- =========================
+           STORY
+      ========================== -->
+
+      <section
+        id="story"
+        class="story-section"
+      >
+
+        <div class="story-image">
+
+          <img
+            src="https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1000&q=85"
+            alt="ألوان وفرش في استوديو فني"
+            loading="lazy"
+          />
+
+          <span>
+            made slowly
+            <br />
+            in amman
+          </span>
+
+        </div>
+
+
+        <div class="story-copy">
+
+          <p class="kicker">
+            <span></span>
+            لماذا سيورا آرت؟
+          </p>
+
+
+          <h2>
+            الفن لا يحتاج
+            <br />
+            إلى مناسبة.
+          </h2>
+
+
+          <p>
+            بدأت سيورا آرت من طاولة صغيرة،
+            ودفتر مليء بالرسومات،
+            وإيمان بأن الأشياء التي نستخدمها كل يوم
+            تستحق أن تكون أجمل وأكثر صدقًا.
+          </p>
+
+
+          <a
+            href="#products"
+            class="text-link"
+          >
+            شاهدي القطع
+            <span>←</span>
+          </a>
+
+        </div>
+
+      </section>
+
+
+      <!-- =========================
+           NOTES
+      ========================== -->
+
+      <section
+        id="notes"
+        class="notes-section"
+      >
+
+        <p class="kicker">
+          <span></span>
+          ملاحظات من سيورا آرت
+        </p>
+
+
+        <h2>
+          تفاصيل تجعل
+          <br />
+          <em>اليوم ألطف.</em>
+        </h2>
+
+
+        <div class="note-grid">
+
+          <article>
+
+            <span>01</span>
+
+            <h3>
+              تغليف مميز
+            </h3>
+
+            <p>
+              كل طلب يجهز بعناية ليصل كأنه هدية.
+            </p>
+
+          </article>
+
+
+          <article>
+
+            <span>02</span>
+
+            <h3>
+              قطع محدودة
+            </h3>
+
+            <p>
+              نصنع بكميات صغيرة حتى تبقى كل قطعة خاصة.
+            </p>
+
+          </article>
+
+
+          <article>
+
+            <span>03</span>
+
+            <h3>
+              أضيفي لمستك
+            </h3>
+
+            <p>
+              بعض القطع يمكن تخصيصها لتصبح لك وحدك.
+            </p>
+
+          </article>
+
+        </div>
+
+      </section>
+
+    </main>
+
+
+    <!-- =========================
+         CART
+    ========================== -->
+
+    <aside
+      class="cart-drawer"
+      data-cart-drawer
+      aria-hidden="true"
+      aria-label="سلة المشتريات"
+    >
+
+      <div class="cart-head">
+
+        <div>
+
+          <p class="kicker">
+            طلبك
+          </p>
+
+          <h2>
+            سلة المشتريات
+          </h2>
+
+        </div>
+
+
+        <button
+          type="button"
+          class="close-cart"
+          data-cart-close
+          aria-label="إغلاق السلة"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <div
+        class="cart-items"
+        data-cart-items
+      >
+
+        <p class="empty-cart">
+          سلتك فارغة حاليًا.
+          <br />
+          اختاري قطعة وابدئي الحكاية.
+        </p>
+
+      </div>
+
+
+      <div class="cart-footer">
+
+        <form class="customer-form" data-customer-form>
+          <h3>بيانات الطلب</h3>
+
+          <label>
+            الاسم الرباعي
+            <input name="fullName" type="text" autocomplete="name" required />
+          </label>
+
+          <label>
+            رقم الهاتف
+            <input name="phone" type="tel" autocomplete="tel" required />
+          </label>
+
+          <label>
+            الإيميل
+            <input name="email" type="email" autocomplete="email" required />
+          </label>
+
+          <label>
+            حساب الانستغرام
+            <input name="instagram" type="text" autocomplete="off" required />
+          </label>
+
+          <label>
+            العنوان
+            <input name="address" type="text" autocomplete="street-address" required />
+          </label>
+
+          <label>
+            طريقة الاستلام
+            <select name="delivery" required>
+              <option value="" selected disabled>اختاري طريقة الاستلام</option>
+              <option value="delivery">توصيل</option>
+              <option value="pickup">استلام من الموقع</option>
+            </select>
+          </label>
+
+          <label>
+            ملاحظات (اختيارية)
+            <textarea name="notes" rows="2"></textarea>
+          </label>
+
+          <fieldset class="order-extras">
+            <legend>إضافات اختيارية</legend>
+            <label class="extra-option">
+              <input type="checkbox" name="chocolate" data-extra="chocolate" data-extra-price="1" />
+              إضافة شوكولاتة (+1 JD)
+            </label>
+            <label class="extra-option">
+              <input type="checkbox" name="giftWrap" data-extra="giftWrap" data-extra-price="1" />
+              تغليف هدية (+1 JD)
+            </label>
+          </fieldset>
+
+          <p class="form-message" data-form-message aria-live="polite"></p>
+        </form>
+
+        <div>
+
+          <span>
+            المجموع
+          </span>
+
+          <strong data-cart-total>
+            0 د.أ
+          </strong>
+
+        </div>
+
+
+        <button
+          class="checkout-button"
+          type="button"
+          data-checkout
+        >
+          إتمام الطلب
+          <span>←</span>
+        </button>
+
+      </div>
+
+    </aside>
+
+
+    <div
+      class="cart-backdrop"
+      data-cart-close
+    ></div>
+
+
+    <!-- =========================
+         FOOTER
+    ========================== -->
+
+    <footer class="site-footer">
+
+      <a
+        href="/"
+        class="logo"
+      >
+        سيورا آرت
+      </a>
+
+      <p>
+        قطع تحمل حكاية،
+        من استوديو صغير في عمّان.
+      </p>
+
+      <small>
+        © 2026 سيورا آرت
+      </small>
+
+    </footer>
+
+
+    <!-- =========================
+         CART JAVASCRIPT
+    ========================== -->
+
+    <script define:vars={{ cartProducts }}>
+
+      const cart = new Map();
+      const customizations = new Map();
+      const orderExtras = { chocolate: false, giftWrap: false };
+
+      const drawer =
+        document.querySelector("[data-cart-drawer]");
+
+      const items =
+        document.querySelector("[data-cart-items]");
+
+      const count =
+        document.querySelector("[data-cart-count]");
+
+      const total =
+        document.querySelector("[data-cart-total]");
+
+      const productData = cartProducts;
+
+      const getCustomization = (id) => customizations.get(id) || { choices: {}, text: {}, imageName: "" };
+
+      const getItemPrice = (id) => {
+        const product = productData[id];
+        const selection = getCustomization(id);
+        const addOns = product.customization?.groups.flatMap((group) => group.options)
+          .filter((option) => Object.values(selection.choices).includes(option.label))
+          .reduce((sum, option) => sum + (option.price || 0), 0) || 0;
+        return product.price + addOns;
+      };
+
+      const renderCustomizationGroup = (id, group, groupIndex) => {
+        const selection = getCustomization(id);
+        const selected = selection.choices[groupIndex] || "";
+        const text = selection.text[groupIndex] || "";
+        const select = group.options.length
+          ? `<select data-cart-option="${id}" data-cart-group="${groupIndex}"><option value="">اختاري الآن</option>${group.options.map((option) => `<option value="${option.label}" ${selected === option.label ? "selected" : ""}>${option.label}${option.price ? ` (+${option.price} د.أ)` : ""}</option>`).join("")}</select>`
+          : `<input type="text" value="${text}" placeholder="${group.textInput?.placeholder || ""}" data-cart-text="${id}" data-cart-group="${groupIndex}" ${group.textInput?.optional ? "" : "required"} />`;
+        const engraving = group.textWhen === selected
+          ? `<input type="text" value="${text}" placeholder="${group.textInput?.placeholder || ""}" data-cart-text="${id}" data-cart-group="${groupIndex}" />`
+          : "";
+        return `<label class="cart-item-option">${group.label}${select}${engraving}</label>`;
+      };
+
+
+      if (!drawer || !items || !count || !total) {
+        throw new Error("Cart elements are missing");
+      }
+
+
+      function renderCart() {
+
+        const selected = [...cart.entries()];
+
+
+        const quantity = selected.reduce(
+          (sum, [, value]) => sum + value,
+          0
+        );
+
+
+        const extrasTotal = Object.values(orderExtras).filter(Boolean).length;
+        const amount = selected.reduce(
+          (sum, [id, value]) =>
+            sum + getItemPrice(id) * value,
+          0
+        ) + extrasTotal;
+
+
+        count.textContent = String(quantity);
+
+        total.textContent =
+          `${amount} د.أ`;
+
+
+        if (selected.length === 0) {
+
+          items.innerHTML = `
+            <p class="empty-cart">
+              سلتك فارغة حاليًا.
+              <br />
+              اختاري قطعة وابدئي الحكاية.
+            </p>
+          `;
+
+          return;
+        }
+
+
+        items.innerHTML = selected
+          .map(([id, value]) => {
+
+            const product = productData[id];
+
+            return `
+              <div class="cart-item">
+
+                <div class="cart-item-image">
+                  <img
+                    src="${product.image}"
+                    alt="${product.name}"
+                  />
+                </div>
+
+                <div class="cart-item-info">
+
+                  <h3>
+                    ${product.name}
+                  </h3>
+
+                  ${product.customization ? `<div class="cart-customizations">${product.customization.groups.map((group, groupIndex) => renderCustomizationGroup(id, group, groupIndex)).join("")}${product.customization.imageUpload ? `<label class="cart-item-option">إضافة صورة<input type="file" accept="image/*" data-cart-image="${id}" />${getCustomization(id).imageName ? `<small class="uploaded-file">${getCustomization(id).imageName}</small>` : ""}</label>` : ""}</div>` : ""}
+
+                  <p>
+                    ${getItemPrice(id)} د.أ
+                  </p>
+
+
+                  <div class="cart-item-controls">
+
+                    <button
+                      class="quantity-button"
+                      data-minus="${id}"
+                      type="button"
+                    >
+                      −
+                    </button>
+
+                    <b>
+                      ${value}
+                    </b>
+
+                    <button
+                      class="quantity-button"
+                      data-plus="${id}"
+                      type="button"
+                    >
+                      +
+                    </button>
+
+                  </div>
+
+
+                  <button
+                    class="cart-item-remove"
+                    data-remove="${id}"
+                    type="button"
+                  >
+                    إزالة
+                  </button>
+
+                </div>
+
+              </div>
+            `;
+
+          })
+          .join("");
+      }
+
+
+      function openCart() {
+
+        drawer.classList.add("is-open");
+
+        drawer.setAttribute(
+          "aria-hidden",
+          "false"
+        );
+
+        document.body.classList.add("cart-open");
+      }
+
+
+      function closeCart() {
+
+        drawer.classList.remove("is-open");
+
+        drawer.setAttribute(
+          "aria-hidden",
+          "true"
+        );
+
+        document.body.classList.remove("cart-open");
+      }
+
+
+      const carouselTrack =
+        document.querySelector("[data-carousel-track]");
+
+      const carouselStep = () => {
+        if (!carouselTrack) return 0;
+        const card = carouselTrack.querySelector(".product-card");
+        return card ? card.offsetWidth + 20 : 0;
+      };
+
+      const moveCarousel = (direction) => {
+        if (!carouselTrack) return;
+        const maximumScroll = carouselTrack.scrollWidth - carouselTrack.clientWidth;
+        const currentScroll = carouselTrack.scrollLeft;
+        const step = carouselStep();
+        const targetScroll = currentScroll + direction * step;
+        const wrappedScroll = direction > 0 && targetScroll >= maximumScroll
+          ? 0
+          : direction < 0 && targetScroll <= 0
+            ? maximumScroll
+            : targetScroll;
+        carouselTrack.scrollTo({
+          left: Math.max(0, Math.min(wrappedScroll, maximumScroll)),
+          behavior: "smooth",
+        });
+      };
+
+      document.querySelector("[data-carousel-previous]")?.addEventListener("click", () => moveCarousel(-1));
+      document.querySelector("[data-carousel-next]")?.addEventListener("click", () => moveCarousel(1));
+
+      let carouselTimer = window.setInterval(() => moveCarousel(1), 4500);
+      if (carouselTrack instanceof HTMLElement) {
+        carouselTrack.addEventListener("mouseenter", () => window.clearInterval(carouselTimer));
+        carouselTrack.addEventListener("mouseleave", () => {
+          carouselTimer = window.setInterval(() => moveCarousel(1), 4500);
+        });
+      }
+
+      const customerForm =
+        document.querySelector("[data-customer-form]");
+      const formMessage =
+        document.querySelector("[data-form-message]");
+      const checkoutButton =
+        document.querySelector("[data-checkout]");
+
+      checkoutButton?.addEventListener("click", () => {
+        if (!customerForm || !formMessage) return;
+        if (!customerForm.reportValidity()) return;
+        const fields = new FormData(customerForm);
+        const customerDetails = [
+          `الاسم الرباعي: ${fields.get("fullName") || ""}`,
+          `رقم الهاتف: ${fields.get("phone") || ""}`,
+          `الإيميل: ${fields.get("email") || ""}`,
+          `حساب الانستغرام: ${fields.get("instagram") || ""}`,
+          `العنوان: ${fields.get("address") || ""}`,
+          `طريقة الاستلام: ${fields.get("delivery") || ""}`,
+          `ملاحظات: ${fields.get("notes") || "لا يوجد"}`,
+        ].join("\n");
+        const orderLines = [...cart.entries()].map(([id, quantity]) => {
+          const selection = getCustomization(id);
+          const choices = Object.values(selection.choices).filter(Boolean).join("، ");
+          const text = Object.values(selection.text).filter(Boolean).join("، ");
+          return `${productData[id].name} × ${quantity} - ${getItemPrice(id)} د.أ${choices ? `\n  الخيارات: ${choices}` : ""}${text ? `\n  التفاصيل: ${text}` : ""}${selection.imageName ? `\n  الصورة: ${selection.imageName}` : ""}`;
+        }).join("\n");
+        const extras = Object.entries(orderExtras).filter(([, selected]) => selected)
+          .map(([extra]) => extra === "chocolate" ? "إضافة شوكولاتة (+1 JD)" : "تغليف هدية (+1 JD)")
+          .join("، ") || "لا يوجد";
+        const body = `طلب جديد من سيورا آرت\n\n${customerDetails}\n\nالمنتجات:\n${orderLines || "لا يوجد"}\n\nالإضافات: ${extras}\nالمجموع: ${total.textContent}`;
+        formMessage.textContent = "جاري فتح البريد لإرسال الطلب...";
+        window.location.href = `mailto:raneem3khamis@gmail.com?subject=${encodeURIComponent("طلب جديد من سيورا آرت")}&body=${encodeURIComponent(body)}`;
+      });
+
+      const addToCart = (button) => {
+        const id = button.getAttribute("data-add-to-cart");
+        if (!id || !productData[id]) return;
+        cart.set(id, (cart.get(id) || 0) + 1);
+        renderCart();
+        openCart();
+      };
+
+      document.querySelectorAll("[data-add-to-cart]").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          addToCart(button);
+        });
+      });
+
+
+      document.addEventListener(
+        "click",
+        (event) => {
+
+          const target =
+            event.target;
+
+          if (!(target instanceof HTMLElement)) {
+            return;
+          }
+
+          const plusId =
+            target.dataset.plus;
+
+          const minusId =
+            target.dataset.minus;
+
+          const removeId =
+            target.dataset.remove;
+
+
+          if (plusId && productData[plusId]) {
+
+            cart.set(
+              plusId,
+              (cart.get(plusId) || 0) + 1
+            );
+
+            renderCart();
+
+            return;
+          }
+
+
+          if (minusId && productData[minusId]) {
+
+            const next =
+              (cart.get(minusId) || 0) - 1;
+
+
+            if (next > 0) {
+              cart.set(minusId, next);
+            } else {
+              cart.delete(minusId);
+            }
+
+
+            renderCart();
+
+            return;
+          }
+
+
+          if (removeId && productData[removeId]) {
+
+            cart.delete(removeId);
+            customizations.delete(removeId);
+
+            renderCart();
+          }
+
+        }
+      );
+
+
+      document.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLSelectElement)) return;
+        const id = target.dataset.cartOption;
+        if (!id || !productData[id]) return;
+        const selection = getCustomization(id);
+        selection.choices[target.dataset.cartGroup] = target.value;
+        customizations.set(id, selection);
+        renderCart();
+      });
+
+
+      document.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement) || !target.dataset.cartText) return;
+        const id = target.dataset.cartText;
+        if (!productData[id]) return;
+        const selection = getCustomization(id);
+        selection.text[target.dataset.cartGroup] = target.value;
+        customizations.set(id, selection);
+      });
+
+
+      document.querySelectorAll("[data-extra]").forEach((input) => {
+        input.addEventListener("change", () => {
+          orderExtras[input.dataset.extra] = input.checked;
+          renderCart();
+        });
+      });
+
+
+      document.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement) || target.type !== "file") return;
+        const id = target.dataset.cartImage;
+        if (!id || !productData[id]) return;
+        const selection = getCustomization(id);
+        selection.imageName = target.files?.[0]?.name || "";
+        customizations.set(id, selection);
+      });
+
+
+      document
+        .querySelectorAll("[data-cart-open]")
+        .forEach((button) => {
+
+          button.addEventListener(
+            "click",
+            openCart
+          );
+
+        });
+
+
+      document
+        .querySelectorAll("[data-cart-close]")
+        .forEach((button) => {
+
+          button.addEventListener(
+            "click",
+            closeCart
+          );
+
+        });
+
+
+      renderCart();
+
+    </script>
+
+  </body>
+
+</html>

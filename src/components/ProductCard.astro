@@ -1,0 +1,47 @@
+---
+import type { Product } from "../data/product";
+
+interface Props {
+  product: Product;
+}
+
+const { product } = Astro.props;
+---
+
+<article class="product-card">
+
+  <div class="product-image">
+    <img
+      src={product.image}
+      alt={product.name}
+      loading="lazy"
+    />
+  </div>
+
+  <div class="product-info">
+
+    <h3>{product.name}</h3>
+
+    <p>{product.description}</p>
+
+    <div class="product-bottom">
+
+      <span class="product-price">
+        {product.price > 0
+          ? `${product.price} د.أ`
+          : "السعر قريبًا"}
+      </span>
+
+      <button
+        class="product-button"
+        type="button"
+        data-add-to-cart={product.id}
+      >
+        أضيفي للسلة
+      </button>
+
+    </div>
+
+  </div>
+
+</article>
