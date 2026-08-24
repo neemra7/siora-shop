@@ -6,6 +6,7 @@ body .kicker, body .art-label, body .art-caption, body .shop-toolbar, body .prod
 :root { --ink:#000000; --primary:#08376B; --secondary:#335B84; --sage:#a8c5c9; --paper:#f3f0e8; --orange:#08376B; --yellow:#335B84; --line:rgba(0,0,0,.2); font-family:'Ala Typoo Medium','Noto Kufi Arabic',sans-serif; color:var(--ink); background:var(--paper); }
 body .logo span, body .kicker, body .nav-links a:hover, body h1 em, body h2 em, body .eye-pupil, body .art-label strong, body .shop-toolbar b, body .note-mark, body .note-grid article>span { color:var(--primary) !important; }
 body .logo span, body .eye-pupil { background-color:var(--primary); }
+body .logo-icon { width:32px; height:32px; margin-inline-end:8px; border-radius:50%; object-fit:cover; vertical-align:middle; }
 body .primary-button:hover, body .checkout-button:hover { background:var(--primary) !important; border-color:var(--primary) !important; }
 body .eye-star, body .art-scribble { color:var(--secondary) !important; }
 body h1, body h1 em, body h2, body .product-info h3, body .note-grid h3 { color:#08376B !important; }

@@ -51,6 +51,7 @@ const cartProducts = Object.fromEntries(
           class="logo"
           aria-label="سيورا آرت الرئيسية"
         >
+          <img class="logo-icon" src="/images/siora%20logo.jpg" alt="" aria-hidden="true" />
           سيورا آرت
         </a>
 
@@ -658,7 +659,7 @@ const cartProducts = Object.fromEntries(
                     ${product.name}
                   </h3>
 
-                  ${product.customization ? `<div class="cart-customizations">${product.customization.groups.map((group, groupIndex) => renderCustomizationGroup(id, group, groupIndex)).join("")}${product.customization.imageUpload ? `<label class="cart-item-option">إضافة صورة<input type="file" accept="image/*" data-cart-image="${id}" />${getCustomization(id).imageName ? `<small class="uploaded-file">${getCustomization(id).imageName}</small>` : ""}</label>` : ""}</div>` : ""}
+                  ${product.customization ? `<div class="cart-customizations">${product.customization.groups.map((group, groupIndex) => renderCustomizationGroup(id, group, groupIndex)).join("")}${product.customization.imageUpload ? `<label class="cart-item-option">إضافة صورة<input type="file" accept="image/*" data-cart-image="${id}" required />${getCustomization(id).imageName ? `<small class="uploaded-file">${getCustomization(id).imageName}</small>` : ""}</label>` : ""}</div>` : ""}
 
                   <p>
                     ${getItemPrice(id)} د.أ
@@ -778,9 +779,20 @@ const cartProducts = Object.fromEntries(
       const checkoutButton =
         document.querySelector("[data-checkout]");
 
-      checkoutButton?.addEventListener("click", () => {
+      checkoutButton?.addEventListener("click", async () => {
         if (!customerForm || !formMessage) return;
         if (!customerForm.reportValidity()) return;
+        if (cart.size === 0) {
+          formMessage.textContent = "أضيفي قطعة واحدة على الأقل قبل إتمام الطلب.";
+          return;
+        }
+        const missingImage = [...cart.keys()].find((id) =>
+          productData[id].customization?.imageUpload && !getCustomization(id).imageName
+        );
+        if (missingImage) {
+          formMessage.textContent = `أضيفي صورة لمنتج «${productData[missingImage].name}» قبل إتمام الطلب.`;
+          return;
+        }
         const fields = new FormData(customerForm);
         const customerDetails = [
           `الاسم الرباعي: ${fields.get("fullName") || ""}`,
@@ -801,8 +813,34 @@ const cartProducts = Object.fromEntries(
           .map(([extra]) => extra === "chocolate" ? "إضافة شوكولاتة (+1 JD)" : "تغليف هدية (+1 JD)")
           .join("، ") || "لا يوجد";
         const body = `طلب جديد من سيورا آرت\n\n${customerDetails}\n\nالمنتجات:\n${orderLines || "لا يوجد"}\n\nالإضافات: ${extras}\nالمجموع: ${total.textContent}`;
-        formMessage.textContent = "جاري فتح البريد لإرسال الطلب...";
-        window.location.href = `mailto:raneem3khamis@gmail.com?subject=${encodeURIComponent("طلب جديد من سيورا آرت")}&body=${encodeURIComponent(body)}`;
+        fields.append("_subject", "طلب جديد من سيورا آرت");
+        fields.append("message", body);
+        fields.append("_captcha", "false");
+        fields.append("_template", "table");
+        checkoutButton.setAttribute("disabled", "true");
+        formMessage.textContent = "جاري إرسال الطلب...";
+
+        try {
+          const response = await fetch("https://formsubmit.co/ajax/raneem3khamis@gmail.com", {
+            method: "POST",
+            headers: { Accept: "application/json" },
+            body: fields,
+          });
+
+          if (!response.ok) throw new Error("Order submission failed");
+
+          formMessage.textContent = "تم إرسال طلبك بنجاح. سنتواصل معك قريبًا.";
+          customerForm.reset();
+          cart.clear();
+          customizations.clear();
+          orderExtras.chocolate = false;
+          orderExtras.giftWrap = false;
+          renderCart();
+        } catch (error) {
+          formMessage.textContent = "تعذر إرسال الطلب الآن. تحققي من الاتصال وحاولي مرة أخرى.";
+        } finally {
+          checkoutButton.removeAttribute("disabled");
+        }
       });
 
       const addToCart = (button) => {
