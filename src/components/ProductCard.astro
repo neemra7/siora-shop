@@ -6,16 +6,21 @@ interface Props {
 }
 
 const { product } = Astro.props;
+const productImages = (product as Product & { images?: string[] }).images ?? [product.image];
 ---
 
 <article class="product-card">
 
   <div class="product-image">
-    <img
-      src={product.image}
-      alt={product.name}
-      loading="lazy"
-    />
+    {productImages.map((image, index) => (
+      <img
+        class:list={{ "product-photo": true, "is-first": index === 0 }}
+        src={image}
+        alt={`${product.name} - صورة ${index + 1}`}
+        loading={index === 0 ? "lazy" : "eager"}
+        aria-hidden={index > 0 ? "true" : undefined}
+      />
+    ))}
   </div>
 
   <div class="product-info">

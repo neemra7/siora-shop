@@ -4,6 +4,7 @@ export type Product = {
   description: string;
   price: number;
   image: string;
+  images?: string[];
   customization?: {
     imageUpload?: boolean;
     groups: {
@@ -22,6 +23,7 @@ export const products: Product[] = [
     description: "قطعة فنية مخصصة بتفاصيل دقيقة.",
     price: 5,
     image: "/images/eye-medal.jpg",
+    images: ["/images/eye-medal.jpg", "/images/medal 1.jpg", "/images/medal 2.jpg", "/images/medal 3.jpg", "/images/medal 4.jpg", "/images/medal 5.jpg"],
     customization: {
       imageUpload: true,
       groups: [{ label: "اختاري التصميم", options: [
@@ -38,6 +40,7 @@ export const products: Product[] = [
     description: "تصميم فني مميز لمناسباتك وهداياك.",
     price: 7,
     image: "/images/mail.jpg",
+    images: ["/images/mail.jpg", "/images/mail 1.jpg", "/images/mail 2.jpg", "/images/mail 3.jpg"],
     customization: {
       imageUpload: true,
       groups: [{ label: "اختاري الظرف", options: [
@@ -53,6 +56,7 @@ export const products: Product[] = [
     description: "قطعة أنيقة تحمل رسمة مخصصة.",
     price: 12,
     image: "/images/eye-necklace.jpg",
+    images: ["/images/eye-necklace.jpg", "/images/necklace 1.jpg"],
     customization: {
       imageUpload: true,
       groups: [{ label: "اختاري الخامة", options: [{ label: "سنسال فضة" }, { label: "سنسال ستانلس ستيل" }] },
@@ -66,6 +70,7 @@ export const products: Product[] = [
     description: "حوّلي صورتك إلى لوحة فنية.",
     price: 20,
     image: "/images/portrait.jpg",
+    images: ["/images/portrait.jpg"],
     customization: {
       imageUpload: true,
       groups: [{ label: "مقاس الورق", options: [{ label: "A4" }, { label: "A3", price: 5 }] },
@@ -80,6 +85,7 @@ export const products: Product[] = [
     description: "كفر مخصص بتصميمك الخاص.",
     price: 7,
     image: "/images/moblie-cover.jpg",
+    images: ["/images/moblie-cover.jpg", "/images/phone cover 1.jpg"],
     customization: {
       imageUpload: true,
       groups: [{ label: "نوع الهاتف", options: [], textInput: { placeholder: "اكتبي نوع الهاتف ورقمه" } }],
@@ -92,5 +98,6 @@ export const products: Product[] = [
     description: "تفاصيل فنية صغيرة ترافق قراءاتك.",
     price: 7,
     image: "/images/bookmark.jpg",
+    images: ["/images/bookmark.jpg"],
   },
 ];
