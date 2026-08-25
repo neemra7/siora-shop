@@ -24,6 +24,7 @@ import "../../styles/global.css";
   }
 
   const ordersList = document.querySelector<HTMLDivElement>("#orders-list");
+  const manualOrderForm = document.querySelector<HTMLFormElement>("#manual-order-form");
   const notificationsButton = document.querySelector<HTMLButtonElement>("#enable-notifications");
 
   const urlBase64ToUint8Array = (value: string) => {
@@ -78,10 +79,25 @@ import "../../styles/global.css";
       '"': "&quot;",
     })[character] || character);
 
+  const getSalesAmount = (order: {
+    total: number | null;
+    delivery_fee: number | null;
+    delivery_method: string | null;
+  }) => {
+    if (order.delivery_method?.includes("الجامعة الأردنية")) {
+      return Number(order.total || 0);
+    }
+
+    return Math.max(
+      0,
+      Number(order.total || 0) - Number(order.delivery_fee || 0)
+    );
+  };
+
   if (ordersList && session) {
     const { data: orders, error } = await supabase
       .from("orders")
-      .select("id, customer_name, total, status, created_at")
+      .select("id, customer_name, total, delivery_fee, delivery_method, status, created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -101,7 +117,9 @@ import "../../styles/global.css";
         (order) => order.status === "processing"
       );
       const monthlySales = monthOrders.reduce(
-        (sum, order) => sum + Number(order.total || 0),
+        (sum, order) => {
+          return sum + getSalesAmount(order);
+        },
         0
       );
 
@@ -131,6 +149,43 @@ import "../../styles/global.css";
       }
     }
   }
+
+  manualOrderForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!session) return;
+
+    const formData = new FormData(manualOrderForm);
+    const customerName = String(formData.get("customer_name") || "").trim();
+    const total = Number(formData.get("total"));
+    const deliveryFee = Number(formData.get("delivery_fee") || 0);
+    const deliveryMethod = String(formData.get("delivery_method") || "").trim();
+    const effectiveDeliveryFee = deliveryMethod === "استلام من الجامعة الأردنية" ? 0 : deliveryFee;
+    const notes = String(formData.get("notes") || "").trim();
+    const message = document.querySelector<HTMLParagraphElement>("#manual-order-message");
+
+    if (!customerName || !Number.isFinite(total) || total < 0 || deliveryFee < 0) {
+      if (message) message.textContent = "تحققي من الاسم والمبالغ المدخلة.";
+      return;
+    }
+
+    const { error } = await supabase.from("orders").insert({
+      customer_name: customerName,
+      delivery_method: deliveryMethod,
+      delivery_fee: effectiveDeliveryFee,
+      notes: notes || null,
+      items: [{ name: "طلب يدوي", quantity: 1, unit_price: total }],
+      total: total + effectiveDeliveryFee,
+      status: "new",
+    });
+
+    if (error) {
+      console.error("Manual order error:", error);
+      if (message) message.textContent = "تعذر إضافة الطلب. تحققي من إعدادات Supabase.";
+      return;
+    }
+
+    window.location.reload();
+  });
   });
 </script>
 <main class="admin-shell">
@@ -173,7 +228,7 @@ import "../../styles/global.css";
         <article class="stat-card">
           <span>المبيعات</span>
           <strong data-stat-sales>0.00 د.أ</strong>
-          <small>هذا الشهر</small>
+          <small>صافي المنتجات، مع احتساب استلام الجامعة</small>
         </article>
 
       </section>
@@ -205,6 +260,43 @@ import "../../styles/global.css";
           <p class="orders-message">جاري تحميل الطلبات...</p>
         </div>
 
+      </section>
+
+      <section class="manual-order-section">
+        <div class="section-heading">
+          <div>
+            <p>إضافة مباشرة</p>
+            <h2>إضافة طلب يدوي</h2>
+          </div>
+        </div>
+
+        <form id="manual-order-form" class="manual-order-form">
+          <label>
+            اسم العميل
+            <input name="customer_name" required />
+          </label>
+          <label>
+            طريقة الاستلام
+            <select name="delivery_method" required>
+              <option value="استلام من الجامعة الأردنية">استلام من الجامعة الأردنية</option>
+              <option value="توصيل">توصيل</option>
+            </select>
+          </label>
+          <label>
+            قيمة المنتجات
+            <input name="total" type="number" min="0" step="0.01" required />
+          </label>
+          <label>
+            رسوم التوصيل
+            <input name="delivery_fee" type="number" min="0" step="0.01" value="0" />
+          </label>
+          <label class="manual-order-notes">
+            ملاحظات
+            <input name="notes" />
+          </label>
+          <button class="filter-button manual-order-submit" type="submit">حفظ الطلب</button>
+          <p id="manual-order-message" class="orders-message" aria-live="polite"></p>
+        </form>
       </section>
 
     </main>
@@ -319,6 +411,44 @@ import "../../styles/global.css";
     gap: 12px;
   }
 
+  .manual-order-section {
+    margin-bottom: 50px;
+  }
+
+  .manual-order-form {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 24px;
+    background: white;
+    border: 1px solid #e7dfd4;
+    border-radius: 18px;
+  }
+
+  .manual-order-form label {
+    display: grid;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .manual-order-form input,
+  .manual-order-form select {
+    min-width: 0;
+    padding: 11px 12px;
+    border: 1px solid #ddd3c7;
+    background: #fffdf9;
+    font: inherit;
+  }
+
+  .manual-order-notes {
+    grid-column: span 2;
+  }
+
+  .manual-order-submit {
+    align-self: end;
+  }
+
   .order-card {
     background: white;
     border: 1px solid #e7dfd4;
@@ -382,6 +512,14 @@ import "../../styles/global.css";
   }
 
   @media (max-width: 800px) {
+    .manual-order-form {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .manual-order-notes {
+      grid-column: span 2;
+    }
+
     .stats-grid {
       grid-template-columns: repeat(2, 1fr);
     }
@@ -429,6 +567,15 @@ import "../../styles/global.css";
     .order-main {
       grid-template-columns: 1fr;
       gap: 12px;
+    }
+
+    .manual-order-form {
+      grid-template-columns: 1fr;
+      padding: 18px;
+    }
+
+    .manual-order-notes {
+      grid-column: auto;
     }
   }
 </style>
