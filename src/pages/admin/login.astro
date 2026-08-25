@@ -1,0 +1,394 @@
+---
+import "../../styles/global.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Admin Login | Siora Art</title>
+  </head>
+
+  <body>
+    <main class="admin-login-page">
+      <div class="admin-login-card">
+
+        <a href="/" class="admin-logo">
+          SIORA ART
+        </a>
+
+        <div class="admin-login-heading">
+          <p>PRIVATE AREA</p>
+          <h1>Welcome back.</h1>
+          <span>Sign in to manage your orders.</span>
+        </div>
+
+        <form id="login-form" class="admin-login-form">
+
+          <div class="form-field">
+            <label for="email">Email address</label>
+
+            <input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="password">Password</label>
+
+            <div class="password-field">
+              <input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                autocomplete="current-password"
+                required
+              />
+
+              <button
+                type="button"
+                id="toggle-password"
+                class="password-toggle"
+                aria-label="Show password"
+                title="Show password"
+              >
+                <svg
+                  class="eye-open"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+                  <circle cx="12" cy="12" r="2.5" />
+                </svg>
+
+                <svg
+                  class="eye-closed"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path d="M3 3l18 18" />
+                  <path d="M10.6 6.2A9.8 9.8 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3.1 3.6M6.2 6.8C3.9 8.3 2.5 12 2.5 12s3.5 6 9.5 6c1.4 0 2.6-.3 3.7-.8" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="admin-login-button">
+            Sign in
+            <span>→</span>
+          </button>
+
+          <p id="login-error" class="login-error" hidden></p>
+
+        </form>
+
+        <a href="/" class="back-to-store">
+          ← Back to Siora Art
+        </a>
+
+      </div>
+    </main>
+
+    <script>
+      import { supabase } from "../../lib/supabase";
+
+      const form =
+        document.querySelector<HTMLFormElement>("#login-form");
+
+      const errorMessage =
+        document.querySelector<HTMLParagraphElement>("#login-error");
+
+      const passwordInput =
+        document.querySelector<HTMLInputElement>("#password");
+
+      const togglePassword =
+        document.querySelector<HTMLButtonElement>("#toggle-password");
+
+      // Show / hide password
+      togglePassword?.addEventListener("click", () => {
+        if (!passwordInput || !togglePassword) return;
+
+        const showing = passwordInput.type === "password";
+
+        passwordInput.type = showing ? "text" : "password";
+
+        togglePassword.classList.toggle("is-visible", showing);
+
+        togglePassword.setAttribute(
+          "aria-label",
+          showing ? "Hide password" : "Show password"
+        );
+
+        togglePassword.setAttribute(
+          "title",
+          showing ? "Hide password" : "Show password"
+        );
+      });
+
+      // Login
+      form?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const emailInput =
+          document.querySelector<HTMLInputElement>("#email");
+
+        if (!emailInput || !passwordInput || !errorMessage) return;
+
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+
+        errorMessage.hidden = true;
+
+        const { error } =
+          await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+        if (error) {
+          errorMessage.textContent =
+            "Incorrect email or password.";
+
+          errorMessage.hidden = false;
+
+          return;
+        }
+
+        window.location.href = "/admin/";
+      });
+    </script>
+  </body>
+</html>
+
+<style>
+  .admin-login-page {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 32px 20px;
+    background: #f5f1eb;
+  }
+
+  .admin-login-card {
+    width: min(430px, 100%);
+    padding: 52px 48px;
+    background: #fffdf9;
+    border: 1px solid rgba(30, 25, 20, 0.12);
+    box-shadow: 0 25px 80px rgba(30, 25, 20, 0.08);
+  }
+
+  .admin-logo {
+    display: block;
+    margin-bottom: 70px;
+    color: #1f1b17;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-decoration: none;
+  }
+
+  .admin-login-heading p {
+    margin: 0 0 12px;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    font-weight: 700;
+    opacity: 0.55;
+  }
+
+  .admin-login-heading h1 {
+    margin: 0;
+    font-size: 38px;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+  }
+
+  .admin-login-heading span {
+    display: block;
+    margin-top: 12px;
+    color: #756e66;
+    font-size: 14px;
+  }
+
+  .admin-login-form {
+    margin-top: 42px;
+  }
+
+  .form-field {
+    margin-bottom: 22px;
+  }
+
+  .form-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .form-field input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px 15px;
+    border: 1px solid #d8d1c8;
+    background: #fff;
+    color: #1f1b17;
+    font: inherit;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form-field input:focus {
+    border-color: #1f1b17;
+    box-shadow: 0 0 0 3px rgba(31, 27, 23, 0.06);
+  }
+
+  /* Password field */
+
+  .password-field {
+    position: relative;
+    width: 100%;
+  }
+
+  .password-field input {
+    padding-right: 55px;
+  }
+
+  .password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+
+    width: 34px;
+    height: 34px;
+
+    display: grid;
+    place-items: center;
+
+    transform: translateY(-50%);
+
+    padding: 6px;
+    border: 0;
+    border-radius: 50%;
+
+    background: transparent;
+    color: #756e66;
+
+    cursor: pointer;
+
+    transition:
+      background 0.2s ease,
+      color 0.2s ease;
+  }
+
+  .password-toggle:hover {
+    background: rgba(31, 27, 23, 0.07);
+    color: #1f1b17;
+  }
+
+  .password-toggle:focus-visible {
+    outline: 2px solid #1f1b17;
+    outline-offset: 2px;
+  }
+
+  .password-toggle svg {
+    width: 19px;
+    height: 19px;
+
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .eye-closed {
+    display: none;
+  }
+
+  .password-toggle.is-visible .eye-open {
+    display: none;
+  }
+
+  .password-toggle.is-visible .eye-closed {
+    display: block;
+  }
+
+  /* Login button */
+
+  .admin-login-button {
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-top: 12px;
+    padding: 16px 18px;
+
+    border: 0;
+    background: #1f1b17;
+    color: white;
+
+    font: inherit;
+    cursor: pointer;
+
+    transition:
+      transform 0.2s,
+      opacity 0.2s;
+  }
+
+  .admin-login-button:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+  }
+
+  .admin-login-button span {
+    font-size: 20px;
+  }
+
+  /* Error */
+
+  .login-error {
+    margin: 16px 0 0;
+    padding: 12px;
+
+    background: #f8e9e7;
+    color: #9b4038;
+
+    font-size: 13px;
+    text-align: center;
+  }
+
+  /* Back link */
+
+  .back-to-store {
+    display: block;
+    margin-top: 35px;
+
+    color: #756e66;
+    font-size: 12px;
+    text-decoration: none;
+  }
+
+  .back-to-store:hover {
+    color: #1f1b17;
+  }
+
+  @media (max-width: 500px) {
+    .admin-login-card {
+      padding: 38px 26px;
+    }
+
+    .admin-logo {
+      margin-bottom: 55px;
+    }
+
+    .admin-login-heading h1 {
+      font-size: 32px;
+    }
+  }
+</style>

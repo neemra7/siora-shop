@@ -1,0 +1,398 @@
+---
+import "../../styles/global.css";
+---
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width" />
+    <meta name="theme-color" content="#f7f2ea" />
+    <title>لوحة تحكم سيورا آرت</title>
+  </head>
+
+  <body class="admin-page">
+<script>
+  import { supabase } from "../../lib/supabase";
+
+  document.addEventListener("DOMContentLoaded", async () => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    window.location.href = "/admin/login/";
+  }
+
+  const ordersList = document.querySelector<HTMLDivElement>("#orders-list");
+  const statusLabels = {
+    new: "جديد",
+    processing: "قيد التجهيز",
+    completed: "مكتمل",
+    cancelled: "ملغي",
+  };
+
+  const formatDate = (value: string) =>
+    new Intl.DateTimeFormat("ar-JO", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
+
+  const escapeHtml = (value: string) =>
+    value.replace(/[&<>'"]/g, (character) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#39;",
+      '"': "&quot;",
+    })[character] || character);
+
+  if (ordersList && session) {
+    const { data: orders, error } = await supabase
+      .from("orders")
+      .select("id, customer_name, total, status, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Supabase orders error:", error);
+      ordersList.innerHTML =
+        '<p class="orders-message">تعذر تحميل الطلبات. تحققي من صلاحيات جدول orders في Supabase.</p>';
+    } else {
+      const currentOrders = orders || [];
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const monthOrders = currentOrders.filter(
+        (order) => new Date(order.created_at) >= monthStart
+      );
+      const newOrders = currentOrders.filter((order) => order.status === "new");
+      const processingOrders = currentOrders.filter(
+        (order) => order.status === "processing"
+      );
+      const monthlySales = monthOrders.reduce(
+        (sum, order) => sum + Number(order.total || 0),
+        0
+      );
+
+      document.querySelector("[data-stat-new]")!.textContent = String(newOrders.length);
+      document.querySelector("[data-stat-processing]")!.textContent = String(processingOrders.length);
+      document.querySelector("[data-stat-month-orders]")!.textContent = String(monthOrders.length);
+      document.querySelector("[data-stat-sales]")!.textContent = `${monthlySales.toFixed(2)} د.أ`;
+
+      if (currentOrders.length === 0) {
+      ordersList.innerHTML =
+        '<p class="orders-message">لا توجد طلبات حتى الآن.</p>';
+      } else {
+      ordersList.innerHTML = orders.map((order) => {
+        const status = order.status in statusLabels ? order.status : "new";
+        const label = statusLabels[status as keyof typeof statusLabels];
+        return `
+          <article class="order-card">
+            <div class="order-main">
+              <div class="order-number"><span>طلب</span><strong>#${order.id.slice(0, 8).toUpperCase()}</strong></div>
+              <div class="order-customer"><strong>${escapeHtml(order.customer_name || "بدون اسم")}</strong><span>${formatDate(order.created_at)}</span></div>
+              <div class="order-status"><span class="status status-${status}">${label}</span></div>
+              <strong class="order-total">${Number(order.total || 0).toFixed(2)} د.أ</strong>
+              <button class="view-order" type="button">عرض الطلب <span>←</span></button>
+            </div>
+          </article>`;
+      }).join("");
+      }
+    }
+  }
+  });
+</script>
+<main class="admin-shell">
+
+      <header class="admin-header">
+        <div>
+          <p class="admin-kicker">سيورا آرت</p>
+          <h1>لوحة الطلبات</h1>
+        </div>
+
+        <div class="admin-profile">
+          <span class="profile-avatar">س</span>
+          <span>صاحبة المتجر</span>
+        </div>
+      </header>
+
+      <section class="stats-grid">
+
+        <article class="stat-card">
+          <span>الطلبات الجديدة</span>
+          <strong data-stat-new>0</strong>
+          <small>تحتاج إلى مراجعة</small>
+        </article>
+
+        <article class="stat-card">
+          <span>قيد التجهيز</span>
+          <strong data-stat-processing>0</strong>
+          <small>طلبات حالية</small>
+        </article>
+
+        <article class="stat-card">
+          <span>طلبات هذا الشهر</span>
+          <strong data-stat-month-orders>0</strong>
+          <small>حتى الآن</small>
+        </article>
+
+        <article class="stat-card">
+          <span>المبيعات</span>
+          <strong data-stat-sales>0.00 د.أ</strong>
+          <small>هذا الشهر</small>
+        </article>
+
+      </section>
+
+      <section class="orders-section">
+
+        <div class="section-heading">
+          <div>
+            <p>آخر الطلبات</p>
+            <h2>طلبات العملاء</h2>
+          </div>
+
+          <button class="filter-button">
+            جميع الطلبات
+            <span>⌄</span>
+          </button>
+        </div>
+
+        <div id="orders-list" class="orders-list" aria-live="polite">
+
+
+
+
+
+
+
+
+
+          <p class="orders-message">جاري تحميل الطلبات...</p>
+        </div>
+
+      </section>
+
+    </main>
+  </body>
+</html>
+  <style>
+    .admin-page {
+      min-height: 100vh;
+      background: #f7f2ea;
+    }
+
+    .admin-shell {
+      width: min(1200px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 40px 0 80px;
+    }
+
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 40px;
+    }
+
+  .admin-kicker {
+    margin: 0 0 6px;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+  }
+
+  .admin-header h1 {
+    margin: 0;
+    font-size: clamp(30px, 5vw, 48px);
+  }
+
+  .admin-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .profile-avatar {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #222;
+    color: white;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 50px;
+  }
+
+  .stat-card {
+    padding: 24px;
+    background: white;
+    border: 1px solid #e7dfd4;
+    border-radius: 18px;
+  }
+
+  .stat-card span,
+  .stat-card small {
+    display: block;
+  }
+
+  .stat-card span {
+    font-size: 14px;
+  }
+
+  .stat-card strong {
+    display: block;
+    margin: 12px 0 6px;
+    font-size: 30px;
+  }
+
+  .stat-card small {
+    color: #777;
+  }
+
+  .section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    margin-bottom: 20px;
+  }
+
+  .section-heading p {
+    margin: 0 0 5px;
+    color: #777;
+  }
+
+  .section-heading h2 {
+    margin: 0;
+    font-size: 28px;
+  }
+
+  .filter-button {
+    padding: 10px 16px;
+    border: 1px solid #ddd3c7;
+    border-radius: 999px;
+    background: white;
+    cursor: pointer;
+  }
+
+  .orders-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .order-card {
+    background: white;
+    border: 1px solid #e7dfd4;
+    border-radius: 18px;
+    overflow: hidden;
+  }
+
+  .order-main {
+    display: grid;
+    grid-template-columns: 120px 1fr 150px 120px 130px;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .order-number span,
+  .order-customer span {
+    display: block;
+    color: #888;
+    font-size: 13px;
+  }
+
+  .order-number strong {
+    font-size: 20px;
+  }
+
+  .order-customer strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .status {
+    display: inline-block;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    background: #eee;
+  }
+
+  .status-new {
+    background: #f3dfb4;
+  }
+
+  .status-processing {
+    background: #dce8ef;
+  }
+
+  .status-completed {
+    background: #dcebdc;
+  }
+
+  .order-total {
+    text-align: left;
+  }
+
+  .view-order {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  @media (max-width: 800px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .order-main {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .order-total {
+      text-align: right;
+    }
+  }
+
+  @media (max-width: 500px) {
+    .admin-shell {
+      width: min(100% - 24px, 1200px);
+      padding-top: 24px;
+    }
+
+    .admin-header {
+      align-items: flex-start;
+    }
+
+    .admin-profile span:last-child {
+      display: none;
+    }
+
+    .stats-grid {
+      gap: 10px;
+    }
+
+    .stat-card {
+      padding: 18px;
+    }
+
+    .stat-card strong {
+      font-size: 24px;
+    }
+
+    .section-heading {
+      align-items: flex-start;
+      gap: 15px;
+    }
+
+    .order-main {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+</style>

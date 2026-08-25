@@ -3,7 +3,7 @@ import "../styles/global.css";
 
 import ProductCard from "../components/ProductCard.astro";
 import { products } from "../data/product";
-
+import { supabase } from "../lib/supabase";
 const cartProducts = Object.fromEntries(
   products.map(({ id, name, price, image, customization }) => [
     id,
@@ -855,28 +855,80 @@ const cartProducts = Object.fromEntries(
         checkoutButton.setAttribute("disabled", "true");
         formMessage.textContent = "جاري إرسال الطلب...";
 
-        try {
-          const response = await fetch("https://formsubmit.co/ajax/sewarselawi133@gmail.com", {
-            method: "POST",
-            headers: { Accept: "application/json" },
-            body: fields,
-          });
+try {
+  const items = [...cart.entries()].map(([id, quantity]) => {
+    const selection = getCustomization(id);
 
-          if (!response.ok) throw new Error("Order submission failed");
+    return {
+      product_id: id,
+      name: productData[id].name,
+      quantity,
+      unit_price: getItemPrice(id),
+      customization: {
+        choices: selection.choices,
+        text: selection.text,
+        image_name: selection.imageName || null,
+      },
+    };
+  });
 
-          formMessage.textContent = "تم إرسال طلبك بنجاح. سنتواصل معك قريبًا.";
-          customerForm.reset();
-          updateDeliveryFields();
-          cart.clear();
-          customizations.clear();
-          orderExtras.chocolate = false;
-          orderExtras.giftWrap = false;
-          renderCart();
-        } catch (error) {
-          formMessage.textContent = "تعذر إرسال الطلب الآن. تحققي من الاتصال وحاولي مرة أخرى.";
-        } finally {
-          checkoutButton.removeAttribute("disabled");
-        }
+  const extras = {
+    chocolate: orderExtras.chocolate,
+    giftWrap: orderExtras.giftWrap,
+  };
+
+  const { error } = await supabase
+    .from("orders")
+    .insert({
+      customer_name: fields.get("fullName"),
+      customer_email: fields.get("email"),
+      customer_phone: fields.get("phone"),
+      instagram: fields.get("instagram"),
+      delivery_method: getDeliveryLabel(),
+      delivery_fee: getDeliveryFee(),
+      address: fields.get("address") || null,
+      notes: fields.get("notes") || null,
+      items,
+      extras,
+      total: Number(
+        total.textContent
+          ?.replace("د.أ", "")
+          .trim()
+          .replace(",", ".")
+      ) || 0,
+      status: "new",
+    });
+
+  if (error) {
+    console.error("Supabase order error:", error);
+    throw error;
+  }
+
+  formMessage.textContent =
+    "تم إرسال طلبك بنجاح. سنتواصل معك قريبًا.";
+
+  customerForm.reset();
+  updateDeliveryFields();
+
+  cart.clear();
+  customizations.clear();
+
+  orderExtras.chocolate = false;
+  orderExtras.giftWrap = false;
+
+  renderCart();
+
+} catch (error) {
+
+  console.error(error);
+
+  formMessage.textContent =
+    "تعذر إرسال الطلب الآن. تحققي من الاتصال وحاولي مرة أخرى.";
+
+} finally {
+
+  checkoutButton.removeAttribute("disabled");
+}
       });
 
       const addToCart = (button) => {
