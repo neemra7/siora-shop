@@ -11,8 +11,8 @@ import { products } from "../../data/product";
     <title>لوحة تحكم سيورا آرت</title>
   </head>
 
-  <body class="admin-page">
-<script define:vars={{ products }}>
+  <body class="admin-page" hidden>
+<script define:vars={{ products }} lang="ts">
   import { supabase } from "../../lib/supabase";
 
   document.addEventListener("DOMContentLoaded", async () => {
@@ -21,6 +21,7 @@ import { products } from "../../data/product";
       window.location.href = "/admin/login/";
       return;
     }
+    document.body.hidden = false;
 
     const ordersList = document.querySelector<HTMLDivElement>("#orders-list");
     const manualOrderForm = document.querySelector<HTMLFormElement>("#manual-order-form");
