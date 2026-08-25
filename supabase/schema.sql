@@ -52,6 +52,11 @@ create policy "Authenticated admins can upload order images"
   to authenticated
   with check (bucket_id = 'order-images');
 
+create policy "Customers can upload order images"
+  on storage.objects for insert
+  to anon
+  with check (bucket_id = 'order-images');
+
 create policy "Anyone can view order images"
   on storage.objects for select
   to public
