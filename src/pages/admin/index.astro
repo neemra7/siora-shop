@@ -13,33 +13,33 @@ import { products } from "../../data/product";
 
   <body class="admin-page">
     <script type="application/json" id="products-data">{JSON.stringify(products)}</script>
-    <script lang="ts" type="module">
+    <script type="module">
   import { supabase } from "../../lib/supabase";
 
-      const products = JSON.parse(document.querySelector<HTMLScriptElement>("#products-data")?.textContent || "[]");
+  const products = JSON.parse(document.querySelector("#products-data")?.textContent || "[]");
 
   (async () => {
     const { data: { session } } = await supabase.auth.getSession();
 
-    const ordersList = document.querySelector<HTMLDivElement>("#orders-list");
-    const manualOrderForm = document.querySelector<HTMLFormElement>("#manual-order-form");
-    const message = document.querySelector<HTMLParagraphElement>("#manual-order-message");
+    const ordersList = document.querySelector("#orders-list");
+    const manualOrderForm = document.querySelector("#manual-order-form");
+    const message = document.querySelector("#manual-order-message");
     const statusLabels = { new: "جديد", processing: "قيد التجهيز", completed: "مكتمل", cancelled: "ملغي" };
-    const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] || character);
-    const getSalesAmount = (order: any) => {
+    const escapeHtml = (value) => value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] || character);
+    const getSalesAmount = (order) => {
       if (order.status === "cancelled") return 0;
       if (order.delivery_method?.includes("الجامعة الأردنية")) return Number(order.total || 0);
       return Math.max(0, Number(order.total || 0) - Number(order.delivery_fee || 0));
     };
-    const getManualItem = (id: string) => {
+    const getManualItem = (id) => {
       const product = products.find((item) => item.id === id);
-      const quantity = Number(manualOrderForm?.querySelector<HTMLInputElement>(`[name='quantity-${id}']`)?.value || 0);
-      const choices: Record<string, string> = {};
-      const text: Record<string, string> = {};
+      const quantity = Number(manualOrderForm?.querySelector(`[name='quantity-${id}']`)?.value || 0);
+      const choices = {};
+      const text = {};
       let customizationPrice = 0;
       product?.customization?.groups.forEach((group, groupIndex) => {
-        const choice = manualOrderForm?.querySelector<HTMLSelectElement>(`[name='customization-${id}-${groupIndex}']`)?.value || "";
-        const textValue = manualOrderForm?.querySelector<HTMLInputElement>(`[name='customization-text-${id}-${groupIndex}']`)?.value || "";
+        const choice = manualOrderForm?.querySelector(`[name='customization-${id}-${groupIndex}']`)?.value || "";
+        const textValue = manualOrderForm?.querySelector(`[name='customization-text-${id}-${groupIndex}']`)?.value || "";
         if (choice) {
           choices[String(groupIndex)] = choice;
           customizationPrice += group.options.find((option) => option.label === choice)?.price || 0;
@@ -49,19 +49,19 @@ import { products } from "../../data/product";
       return { product, quantity, unit_price: (product?.price || 0) + customizationPrice, customization: { choices, text } };
     };
     const updateSubtotal = () => {
-      const selected = Array.from(manualOrderForm?.querySelectorAll<HTMLInputElement>("[name='product_id']:checked") || []);
+      const selected = Array.from(manualOrderForm?.querySelectorAll("[name='product_id']:checked") || []);
       const subtotal = selected.reduce((sum, input) => {
         const item = getManualItem(input.value);
         return sum + item.unit_price * item.quantity;
       }, 0);
-      const output = document.querySelector<HTMLOutputElement>("#manual-order-subtotal");
+      const output = document.querySelector("#manual-order-subtotal");
       if (output) {
         output.value = `${subtotal.toFixed(2)} د.أ`;
         output.textContent = `${subtotal.toFixed(2)} د.أ`;
       }
     };
-    const uploadImage = async (id: string) => {
-      const file = manualOrderForm?.querySelector<HTMLInputElement>(`[name='image-${id}']`)?.files?.[0];
+    const uploadImage = async (id) => {
+      const file = manualOrderForm?.querySelector(`[name='image-${id}']`)?.files?.[0];
       if (!file) return null;
       const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `${crypto.randomUUID()}.${extension}`;
@@ -90,8 +90,8 @@ import { products } from "../../data/product";
         const savedItems = await Promise.all(items.map(async (item) => {
           const imageUrl = await uploadImage(item.id);
           return {
-            product_id: item.product!.id,
-            name: item.product!.name,
+            product_id: item.product.id,
+            name: item.product.name,
             quantity: item.quantity,
             unit_price: item.unit_price,
             customization: { ...item.customization, image_url: imageUrl },
@@ -114,9 +114,9 @@ import { products } from "../../data/product";
           const emptyMessage = ordersList.querySelector(".orders-message");
           if (emptyMessage) ordersList.innerHTML = "";
           const imageLinks = (savedOrder.items || [])
-            .map((item: any) => item.customization?.image_url)
+            .map((item) => item.customization?.image_url)
             .filter(Boolean)
-            .map((url: string) => `<a class="order-image-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">صورة</a>`)
+            .map((url) => `<a class="order-image-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">صورة</a>`)
             .join("");
           ordersList.insertAdjacentHTML("afterbegin", `<article class="order-card"><div class="order-main"><div class="order-number"><span>طلب</span><strong>#${savedOrder.id.slice(0, 8).toUpperCase()}</strong></div><div class="order-customer"><strong>${escapeHtml(savedOrder.customer_name)}</strong><span>الآن</span></div><div class="order-status"><select class="order-status-select status-new" data-order-status="${savedOrder.id}" aria-label="تغيير حالة الطلب">${Object.entries(statusLabels).map(([value, label]) => `<option value="${value}" ${value === "new" ? "selected" : ""}>${label}</option>`).join("")}</select></div><strong class="order-total">${Number(savedOrder.total || 0).toFixed(2)} د.أ</strong>${imageLinks}</div></article>`);
         }
@@ -139,13 +139,13 @@ import { products } from "../../data/product";
         monthStart.setDate(1);
         monthStart.setHours(0, 0, 0, 0);
         const monthOrders = currentOrders.filter((order) => new Date(order.created_at) >= monthStart);
-        document.querySelector("[data-stat-new]")!.textContent = String(currentOrders.filter((order) => order.status === "new").length);
-        document.querySelector("[data-stat-processing]")!.textContent = String(currentOrders.filter((order) => order.status === "processing").length);
-        document.querySelector("[data-stat-month-orders]")!.textContent = String(monthOrders.length);
-        document.querySelector("[data-stat-sales]")!.textContent = `${monthOrders.reduce((sum, order) => sum + getSalesAmount(order), 0).toFixed(2)} د.أ`;
+        document.querySelector("[data-stat-new]").textContent = String(currentOrders.filter((order) => order.status === "new").length);
+        document.querySelector("[data-stat-processing]").textContent = String(currentOrders.filter((order) => order.status === "processing").length);
+        document.querySelector("[data-stat-month-orders]").textContent = String(monthOrders.length);
+        document.querySelector("[data-stat-sales]").textContent = `${monthOrders.reduce((sum, order) => sum + getSalesAmount(order), 0).toFixed(2)} د.أ`;
         ordersList.innerHTML = currentOrders.length ? currentOrders.map((order) => {
           const status = order.status in statusLabels ? order.status : "new";
-          const images = (order.items || []).map((item: any) => item.customization?.image_url).filter(Boolean).map((url: string) => `<a class="order-image-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">صورة</a>`).join("");
+          const images = (order.items || []).map((item) => item.customization?.image_url).filter(Boolean).map((url) => `<a class="order-image-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">صورة</a>`).join("");
           return `<article class="order-card"><div class="order-main"><div class="order-number"><span>طلب</span><strong>#${order.id.slice(0, 8).toUpperCase()}</strong></div><div class="order-customer"><strong>${escapeHtml(order.customer_name || "بدون اسم")}</strong><span>${new Intl.DateTimeFormat("ar-JO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.created_at))}</span></div><div class="order-status"><select class="order-status-select status-${status}" data-order-status="${order.id}" aria-label="تغيير حالة الطلب">${Object.entries(statusLabels).map(([value, label]) => `<option value="${value}" ${value === status ? "selected" : ""}>${label}</option>`).join("")}</select></div><strong class="order-total">${Number(order.total || 0).toFixed(2)} د.أ</strong>${images}</div></article>`;
         }).join("") : '<p class="orders-message">لا توجد طلبات حتى الآن.</p>';
       }
@@ -165,6 +165,7 @@ import { products } from "../../data/product";
     });
   })();
 </script>
+
 <main class="admin-shell">
 
       <header class="admin-header">
