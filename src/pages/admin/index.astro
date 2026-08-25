@@ -12,8 +12,11 @@ import { products } from "../../data/product";
   </head>
 
   <body class="admin-page">
-<script define:vars={{ products }} lang="ts">
+    <script type="application/json" id="products-data">{JSON.stringify(products)}</script>
+    <script lang="ts">
   import { supabase } from "../../lib/supabase";
+
+      const products = JSON.parse(document.querySelector<HTMLScriptElement>("#products-data")?.textContent || "[]");
 
   (async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -244,7 +247,7 @@ import { products } from "../../data/product";
           </div>
         </div>
 
-        <form id="manual-order-form" class="manual-order-form">
+        <form id="manual-order-form" class="manual-order-form" data-products={JSON.stringify(products)}>
           <label>
             اسم العميل
             <input name="customer_name" required />
