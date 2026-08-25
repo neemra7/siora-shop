@@ -1,5 +1,6 @@
 ---
 import "../../styles/global.css";
+import { products } from "../../data/product";
 ---
 <html lang="ar" dir="rtl">
 <head>
@@ -11,7 +12,7 @@ import "../../styles/global.css";
   </head>
 
   <body class="admin-page">
-<script>
+<script define:vars={{ products }}>
   import { supabase } from "../../lib/supabase";
 
   document.addEventListener("DOMContentLoaded", async () => {
@@ -87,6 +88,7 @@ import "../../styles/global.css";
     delivery_fee: number | null;
     delivery_method: string | null;
   }) => {
+    if (order.status === "cancelled") return 0;
     if (order.delivery_method?.includes("الجامعة الأردنية")) {
       return Number(order.total || 0);
     }
@@ -96,6 +98,24 @@ import "../../styles/global.css";
       Number(order.total || 0) - Number(order.delivery_fee || 0)
     );
   };
+
+  const updateManualSubtotal = () => {
+    if (!manualOrderForm) return;
+    const selectedProductIds = Array.from(
+      manualOrderForm.querySelectorAll<HTMLInputElement>("[name='product_id']:checked")
+    ).map((input) => input.value);
+    const subtotal = selectedProductIds.reduce((sum, id) => {
+      const product = products.find((item) => item.id === id);
+      const quantity = Number(
+        manualOrderForm.querySelector<HTMLInputElement>(`[name='quantity-${id}']`)?.value || 0
+      );
+      return sum + (product?.price || 0) * quantity;
+    }, 0);
+    const output = document.querySelector<HTMLOutputElement>("#manual-order-subtotal");
+    if (output) output.value = `${subtotal.toFixed(2)} د.أ`;
+  };
+
+  manualOrderForm?.addEventListener("input", updateManualSubtotal);
 
   if (ordersList && session) {
     const { data: orders, error } = await supabase
@@ -163,15 +183,23 @@ import "../../styles/global.css";
 
     const formData = new FormData(manualOrderForm);
     const customerName = String(formData.get("customer_name") || "").trim();
-    const total = Number(formData.get("total"));
+    const selectedProductIds = formData.getAll("product_id").map(String);
+    const items = selectedProductIds.flatMap((id) => {
+      const product = products.find((item) => item.id === id);
+      const quantity = Number(formData.get(`quantity-${id}`) || 0);
+      return product && quantity > 0
+        ? [{ product_id: product.id, name: product.name, quantity, unit_price: product.price }]
+        : [];
+    });
+    const total = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
     const deliveryFee = Number(formData.get("delivery_fee") || 0);
     const deliveryMethod = String(formData.get("delivery_method") || "").trim();
     const effectiveDeliveryFee = deliveryMethod === "استلام من الجامعة الأردنية" ? 0 : deliveryFee;
     const notes = String(formData.get("notes") || "").trim();
     const message = document.querySelector<HTMLParagraphElement>("#manual-order-message");
 
-    if (!customerName || !Number.isFinite(total) || total < 0 || deliveryFee < 0) {
-      if (message) message.textContent = "تحققي من الاسم والمبالغ المدخلة.";
+    if (!customerName || items.length === 0 || !Number.isFinite(deliveryFee) || deliveryFee < 0) {
+      if (message) message.textContent = "أضيفي الاسم ومنتجًا واحدًا على الأقل، وتحققي من رسوم التوصيل.";
       return;
     }
 
@@ -180,7 +208,7 @@ import "../../styles/global.css";
       delivery_method: deliveryMethod,
       delivery_fee: effectiveDeliveryFee,
       notes: notes || null,
-      items: [{ name: "طلب يدوي", quantity: 1, unit_price: total }],
+      items,
       total: total + effectiveDeliveryFee,
       status: "new",
     });
@@ -308,10 +336,26 @@ import "../../styles/global.css";
               <option value="توصيل">توصيل</option>
             </select>
           </label>
-          <label>
-            قيمة المنتجات
-            <input name="total" type="number" min="0" step="0.01" required />
-          </label>
+          <fieldset class="manual-products">
+            <legend>المنتجات</legend>
+            {products.map((product) => (
+              <label class="manual-product">
+                <span>
+                  <input type="checkbox" name="product_id" value={product.id} />
+                  {product.name} ({product.price} د.أ)
+                </span>
+                <input
+                  name={`quantity-${product.id}`}
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="1"
+                  aria-label={`كمية ${product.name}`}
+                />
+              </label>
+            ))}
+          </fieldset>
+          <output id="manual-order-subtotal" class="manual-order-subtotal">0.00 د.أ</output>
           <label>
             رسوم التوصيل
             <input name="delivery_fee" type="number" min="0" step="0.01" value="0" />
@@ -458,6 +502,48 @@ import "../../styles/global.css";
     font-weight: 600;
   }
 
+  .manual-products {
+    display: grid;
+    grid-column: span 4;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .manual-products legend {
+    grid-column: 1 / -1;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .manual-product {
+    display: flex !important;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px !important;
+    padding: 10px;
+    border: 1px solid #e7dfd4;
+    font-weight: 400 !important;
+  }
+
+  .manual-product span {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .manual-product input[type="number"] {
+    width: 58px;
+  }
+
+  .manual-order-subtotal {
+    align-self: end;
+    font-weight: 700;
+  }
+
   .manual-order-form input,
   .manual-order-form select {
     min-width: 0;
@@ -555,6 +641,11 @@ import "../../styles/global.css";
       grid-template-columns: repeat(2, 1fr);
     }
 
+    .manual-products {
+      grid-column: span 2;
+      grid-template-columns: repeat(2, 1fr);
+    }
+
     .manual-order-notes {
       grid-column: span 2;
     }
@@ -615,6 +706,11 @@ import "../../styles/global.css";
 
     .manual-order-notes {
       grid-column: auto;
+    }
+
+    .manual-products {
+      grid-column: auto;
+      grid-template-columns: 1fr;
     }
   }
 </style>
