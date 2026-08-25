@@ -105,17 +105,45 @@ import { products } from "../../data/product";
       manualOrderForm.querySelectorAll<HTMLInputElement>("[name='product_id']:checked")
     ).map((input) => input.value);
     const subtotal = selectedProductIds.reduce((sum, id) => {
-      const product = products.find((item) => item.id === id);
-      const quantity = Number(
-        manualOrderForm.querySelector<HTMLInputElement>(`[name='quantity-${id}']`)?.value || 0
-      );
-      return sum + (product?.price || 0) * quantity;
+      const item = getManualItem(id);
+      return sum + item.unit_price * item.quantity;
     }, 0);
     const output = document.querySelector<HTMLOutputElement>("#manual-order-subtotal");
     if (output) output.value = `${subtotal.toFixed(2)} د.أ`;
   };
 
   manualOrderForm?.addEventListener("input", updateManualSubtotal);
+
+  const getManualItem = (id: string) => {
+    const product = products.find((item) => item.id === id);
+    const quantity = Number(
+      manualOrderForm?.querySelector<HTMLInputElement>(`[name='quantity-${id}']`)?.value || 0
+    );
+    const choices: Record<string, string> = {};
+    const text: Record<string, string> = {};
+    let customizationPrice = 0;
+
+    product?.customization?.groups.forEach((group, groupIndex) => {
+      const choice = manualOrderForm?.querySelector<HTMLSelectElement>(
+        `[name='customization-${id}-${groupIndex}']`
+      )?.value || "";
+      const textValue = manualOrderForm?.querySelector<HTMLInputElement>(
+        `[name='customization-text-${id}-${groupIndex}']`
+      )?.value || "";
+      if (choice) {
+        choices[String(groupIndex)] = choice;
+        customizationPrice += group.options.find((option) => option.label === choice)?.price || 0;
+      }
+      if (textValue) text[String(groupIndex)] = textValue;
+    });
+
+    return {
+      product,
+      quantity,
+      unit_price: (product?.price || 0) + customizationPrice,
+      customization: { choices, text },
+    };
+  };
 
   if (ordersList && session) {
     const { data: orders, error } = await supabase
@@ -185,10 +213,15 @@ import { products } from "../../data/product";
     const customerName = String(formData.get("customer_name") || "").trim();
     const selectedProductIds = formData.getAll("product_id").map(String);
     const items = selectedProductIds.flatMap((id) => {
-      const product = products.find((item) => item.id === id);
-      const quantity = Number(formData.get(`quantity-${id}`) || 0);
-      return product && quantity > 0
-        ? [{ product_id: product.id, name: product.name, quantity, unit_price: product.price }]
+      const item = getManualItem(id);
+      return item.product && item.quantity > 0
+        ? [{
+            product_id: item.product.id,
+            name: item.product.name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            customization: item.customization,
+          }]
         : [];
     });
     const total = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
@@ -352,6 +385,27 @@ import { products } from "../../data/product";
                   value="1"
                   aria-label={`كمية ${product.name}`}
                 />
+                {product.customization?.groups.map((group, groupIndex) => (
+                  <span class="manual-customization">
+                    {group.options.length > 0 ? (
+                      <select name={`customization-${product.id}-${groupIndex}`} aria-label={`${product.name}: ${group.label}`}>
+                        <option value="">{group.label}</option>
+                        {group.options.map((option) => (
+                          <option value={option.label}>
+                            {option.label}{option.price ? ` (+${option.price} د.أ)` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                    {group.textInput ? (
+                      <input
+                        name={`customization-text-${product.id}-${groupIndex}`}
+                        placeholder={group.textInput.placeholder}
+                        aria-label={`${product.name}: ${group.label}`}
+                      />
+                    ) : null}
+                  </span>
+                ))}
               </label>
             ))}
           </fieldset>
@@ -519,10 +573,10 @@ import { products } from "../../data/product";
   }
 
   .manual-product {
-    display: flex !important;
+    display: grid !important;
     grid-template-columns: 1fr auto;
-    align-items: center;
-    justify-content: space-between;
+    align-items: start;
+    justify-content: initial;
     gap: 8px !important;
     padding: 10px;
     border: 1px solid #e7dfd4;
@@ -537,6 +591,23 @@ import { products } from "../../data/product";
 
   .manual-product input[type="number"] {
     width: 58px;
+  }
+
+  .manual-customization {
+    display: grid !important;
+    grid-column: 1 / -1;
+    gap: 6px !important;
+    font-size: 12px;
+  }
+
+  .manual-customization select,
+  .manual-customization input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px;
+    border: 1px solid #ddd3c7;
+    background: #fffdf9;
+    font: inherit;
   }
 
   .manual-order-subtotal {
