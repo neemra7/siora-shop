@@ -15,7 +15,7 @@ import { products } from "../../data/product";
 <script define:vars={{ products }} lang="ts">
   import { supabase } from "../../lib/supabase";
 
-  window.addEventListener("load", async () => {
+  (async () => {
     const { data: { session } } = await supabase.auth.getSession();
 
     const ordersList = document.querySelector<HTMLDivElement>("#orders-list");
@@ -52,7 +52,10 @@ import { products } from "../../data/product";
         return sum + item.unit_price * item.quantity;
       }, 0);
       const output = document.querySelector<HTMLOutputElement>("#manual-order-subtotal");
-      if (output) output.value = `${subtotal.toFixed(2)} د.أ`;
+      if (output) {
+        output.value = `${subtotal.toFixed(2)} د.أ`;
+        output.textContent = `${subtotal.toFixed(2)} د.أ`;
+      }
     };
     const uploadImage = async (id: string) => {
       const file = manualOrderForm?.querySelector<HTMLInputElement>(`[name='image-${id}']`)?.files?.[0];
@@ -66,6 +69,7 @@ import { products } from "../../data/product";
 
     manualOrderForm?.addEventListener("input", updateSubtotal);
     manualOrderForm?.addEventListener("change", updateSubtotal);
+    updateSubtotal();
     manualOrderForm?.addEventListener("submit", async (event) => {
       event.preventDefault();
       const formData = new FormData(manualOrderForm);
@@ -90,7 +94,8 @@ import { products } from "../../data/product";
             customization: { ...item.customization, image_url: imageUrl },
           };
         }));
-        const { error } = await supabase.from("orders").insert({
+        const savedOrder = {
+          id: crypto.randomUUID(),
           customer_name: customerName,
           delivery_method: deliveryMethod,
           delivery_fee: deliveryFee,
@@ -98,9 +103,23 @@ import { products } from "../../data/product";
           items: savedItems,
           total: subtotal + deliveryFee,
           status: "new",
-        });
+          created_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("orders").insert(savedOrder);
         if (error) throw error;
-        window.location.reload();
+        if (ordersList && savedOrder) {
+          const emptyMessage = ordersList.querySelector(".orders-message");
+          if (emptyMessage) ordersList.innerHTML = "";
+          const imageLinks = (savedOrder.items || [])
+            .map((item: any) => item.customization?.image_url)
+            .filter(Boolean)
+            .map((url: string) => `<a class="order-image-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">صورة</a>`)
+            .join("");
+          ordersList.insertAdjacentHTML("afterbegin", `<article class="order-card"><div class="order-main"><div class="order-number"><span>طلب</span><strong>#${savedOrder.id.slice(0, 8).toUpperCase()}</strong></div><div class="order-customer"><strong>${escapeHtml(savedOrder.customer_name)}</strong><span>الآن</span></div><div class="order-status"><select class="order-status-select status-new" data-order-status="${savedOrder.id}" aria-label="تغيير حالة الطلب">${Object.entries(statusLabels).map(([value, label]) => `<option value="${value}" ${value === "new" ? "selected" : ""}>${label}</option>`).join("")}</select></div><strong class="order-total">${Number(savedOrder.total || 0).toFixed(2)} د.أ</strong>${imageLinks}</div></article>`);
+        }
+        manualOrderForm.reset();
+        updateSubtotal();
+        if (message) message.textContent = "تم حفظ الطلب بنجاح.";
       } catch (error) {
         console.error("Manual order save error:", error);
         if (message) message.textContent = "تعذر حفظ الطلب أو الصورة. تحققي من إعدادات Supabase.";
@@ -141,7 +160,7 @@ import { products } from "../../data/product";
         window.location.reload();
       }
     });
-  });
+  })();
 </script>
 <main class="admin-shell">
 
