@@ -572,6 +572,7 @@ const cartProducts = Object.fromEntries(
     ========================== -->
 
     <script define:vars={{ cartProducts }}>
+      import { supabase } from '../../lib/supabase';
 
       const cart = new Map();
       const customizations = new Map();
