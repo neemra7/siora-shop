@@ -46,6 +46,7 @@ export const products: Product[] = [
       groups: [{ label: "اختاري الظرف", options: [
         { label: "ظرف عادي" }, { label: "ظرف عالي الجودة", price: 1 },
         { label: "تصميم يحتوي على شخصين", price: 5 },
+        { label: "ظرف مع إطار خشبي", price: 3 },
       ] }],
     },
   },

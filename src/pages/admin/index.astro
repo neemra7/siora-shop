@@ -16,263 +16,135 @@ import { products } from "../../data/product";
   import { supabase } from "../../lib/supabase";
 
   document.addEventListener("DOMContentLoaded", async () => {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    window.location.href = "/admin/login/";
-  }
-
-  const ordersList = document.querySelector<HTMLDivElement>("#orders-list");
-  const manualOrderForm = document.querySelector<HTMLFormElement>("#manual-order-form");
-  const notificationsButton = document.querySelector<HTMLButtonElement>("#enable-notifications");
-
-  const urlBase64ToUint8Array = (value: string) => {
-    const padding = "=".repeat((4 - (value.length % 4)) % 4);
-    const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
-    return Uint8Array.from(window.atob(base64), (character) => character.charCodeAt(0));
-  };
-
-  const vapidPublicKey = import.meta.env.PUBLIC_VAPID_PUBLIC_KEY;
-
-  notificationsButton?.addEventListener("click", async () => {
-    if (!session || !vapidPublicKey || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = "/admin/login/";
       return;
     }
 
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") return;
-
-    const registration = await navigator.serviceWorker.register("/sw.js");
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-    });
-
-    const { error } = await supabase.from("push_subscriptions").upsert({
-      user_id: session.user.id,
-      endpoint: subscription.endpoint,
-      subscription: subscription.toJSON(),
-    }, { onConflict: "endpoint" });
-
-    if (!error) notificationsButton.textContent = "الإشعارات مفعلة";
-  });
-  const statusLabels = {
-    new: "جديد",
-    processing: "قيد التجهيز",
-    completed: "مكتمل",
-    cancelled: "ملغي",
-  };
-   const statusOptions = Object.entries(statusLabels)
-     .map(([value, label]) => `<option value="${value}">${label}</option>`)
-     .join("");
-
-  const formatDate = (value: string) =>
-    new Intl.DateTimeFormat("ar-JO", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
-
-  const escapeHtml = (value: string) =>
-    value.replace(/[&<>'"]/g, (character) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      "'": "&#39;",
-      '"': "&quot;",
-    })[character] || character);
-
-  const getSalesAmount = (order: {
-    total: number | null;
-    delivery_fee: number | null;
-    delivery_method: string | null;
-  }) => {
-    if (order.status === "cancelled") return 0;
-    if (order.delivery_method?.includes("الجامعة الأردنية")) {
-      return Number(order.total || 0);
-    }
-
-    return Math.max(
-      0,
-      Number(order.total || 0) - Number(order.delivery_fee || 0)
-    );
-  };
-
-  const updateManualSubtotal = () => {
-    if (!manualOrderForm) return;
-    const selectedProductIds = Array.from(
-      manualOrderForm.querySelectorAll<HTMLInputElement>("[name='product_id']:checked")
-    ).map((input) => input.value);
-    const subtotal = selectedProductIds.reduce((sum, id) => {
-      const item = getManualItem(id);
-      return sum + item.unit_price * item.quantity;
-    }, 0);
-    const output = document.querySelector<HTMLOutputElement>("#manual-order-subtotal");
-    if (output) output.value = `${subtotal.toFixed(2)} د.أ`;
-  };
-
-  manualOrderForm?.addEventListener("input", updateManualSubtotal);
-
-  const getManualItem = (id: string) => {
-    const product = products.find((item) => item.id === id);
-    const quantity = Number(
-      manualOrderForm?.querySelector<HTMLInputElement>(`[name='quantity-${id}']`)?.value || 0
-    );
-    const choices: Record<string, string> = {};
-    const text: Record<string, string> = {};
-    let customizationPrice = 0;
-
-    product?.customization?.groups.forEach((group, groupIndex) => {
-      const choice = manualOrderForm?.querySelector<HTMLSelectElement>(
-        `[name='customization-${id}-${groupIndex}']`
-      )?.value || "";
-      const textValue = manualOrderForm?.querySelector<HTMLInputElement>(
-        `[name='customization-text-${id}-${groupIndex}']`
-      )?.value || "";
-      if (choice) {
-        choices[String(groupIndex)] = choice;
-        customizationPrice += group.options.find((option) => option.label === choice)?.price || 0;
-      }
-      if (textValue) text[String(groupIndex)] = textValue;
-    });
-
-    return {
-      product,
-      quantity,
-      unit_price: (product?.price || 0) + customizationPrice,
-      customization: { choices, text },
+    const ordersList = document.querySelector<HTMLDivElement>("#orders-list");
+    const manualOrderForm = document.querySelector<HTMLFormElement>("#manual-order-form");
+    const message = document.querySelector<HTMLParagraphElement>("#manual-order-message");
+    const statusLabels = { new: "جديد", processing: "قيد التجهيز", completed: "مكتمل", cancelled: "ملغي" };
+    const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] || character);
+    const getSalesAmount = (order: any) => {
+      if (order.status === "cancelled") return 0;
+      if (order.delivery_method?.includes("الجامعة الأردنية")) return Number(order.total || 0);
+      return Math.max(0, Number(order.total || 0) - Number(order.delivery_fee || 0));
     };
-  };
+    const getManualItem = (id: string) => {
+      const product = products.find((item) => item.id === id);
+      const quantity = Number(manualOrderForm?.querySelector<HTMLInputElement>(`[name='quantity-${id}']`)?.value || 0);
+      const choices: Record<string, string> = {};
+      const text: Record<string, string> = {};
+      let customizationPrice = 0;
+      product?.customization?.groups.forEach((group, groupIndex) => {
+        const choice = manualOrderForm?.querySelector<HTMLSelectElement>(`[name='customization-${id}-${groupIndex}']`)?.value || "";
+        const textValue = manualOrderForm?.querySelector<HTMLInputElement>(`[name='customization-text-${id}-${groupIndex}']`)?.value || "";
+        if (choice) {
+          choices[String(groupIndex)] = choice;
+          customizationPrice += group.options.find((option) => option.label === choice)?.price || 0;
+        }
+        if (textValue) text[String(groupIndex)] = textValue;
+      });
+      return { product, quantity, unit_price: (product?.price || 0) + customizationPrice, customization: { choices, text } };
+    };
+    const updateSubtotal = () => {
+      const selected = Array.from(manualOrderForm?.querySelectorAll<HTMLInputElement>("[name='product_id']:checked") || []);
+      const subtotal = selected.reduce((sum, input) => {
+        const item = getManualItem(input.value);
+        return sum + item.unit_price * item.quantity;
+      }, 0);
+      const output = document.querySelector<HTMLOutputElement>("#manual-order-subtotal");
+      if (output) output.value = `${subtotal.toFixed(2)} د.أ`;
+    };
+    const uploadImage = async (id: string) => {
+      const file = manualOrderForm?.querySelector<HTMLInputElement>(`[name='image-${id}']`)?.files?.[0];
+      if (!file) return null;
+      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${crypto.randomUUID()}.${extension}`;
+      const { error } = await supabase.storage.from("order-images").upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw error;
+      return supabase.storage.from("order-images").getPublicUrl(path).data.publicUrl;
+    };
 
-  if (ordersList && session) {
-    const { data: orders, error } = await supabase
-      .from("orders")
-      .select("id, customer_name, total, delivery_fee, delivery_method, status, created_at")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Supabase orders error:", error);
-      ordersList.innerHTML =
-        '<p class="orders-message">تعذر تحميل الطلبات. تحققي من صلاحيات جدول orders في Supabase.</p>';
-    } else {
-      const currentOrders = orders || [];
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
-      const monthOrders = currentOrders.filter(
-        (order) => new Date(order.created_at) >= monthStart
-      );
-      const newOrders = currentOrders.filter((order) => order.status === "new");
-      const processingOrders = currentOrders.filter(
-        (order) => order.status === "processing"
-      );
-      const monthlySales = monthOrders.reduce(
-        (sum, order) => {
-          return sum + getSalesAmount(order);
-        },
-        0
-      );
-
-      document.querySelector("[data-stat-new]")!.textContent = String(newOrders.length);
-      document.querySelector("[data-stat-processing]")!.textContent = String(processingOrders.length);
-      document.querySelector("[data-stat-month-orders]")!.textContent = String(monthOrders.length);
-      document.querySelector("[data-stat-sales]")!.textContent = `${monthlySales.toFixed(2)} د.أ`;
-
-      if (currentOrders.length === 0) {
-      ordersList.innerHTML =
-        '<p class="orders-message">لا توجد طلبات حتى الآن.</p>';
-      } else {
-      ordersList.innerHTML = orders.map((order) => {
-        const status = order.status in statusLabels ? order.status : "new";
-        const label = statusLabels[status as keyof typeof statusLabels];
-        return `
-          <article class="order-card">
-            <div class="order-main">
-              <div class="order-number"><span>طلب</span><strong>#${order.id.slice(0, 8).toUpperCase()}</strong></div>
-              <div class="order-customer"><strong>${escapeHtml(order.customer_name || "بدون اسم")}</strong><span>${formatDate(order.created_at)}</span></div>
-                <div class="order-status">
-                  <select class="order-status-select status-${status}" data-order-status="${order.id}" aria-label="تغيير حالة الطلب">
-                    ${statusOptions.replace(`value="${status}"`, `value="${status}" selected`)}
-                  </select>
-                </div>
-              <strong class="order-total">${Number(order.total || 0).toFixed(2)} د.أ</strong>
-              <button class="view-order" type="button">عرض الطلب <span>←</span></button>
-            </div>
-          </article>`;
-      }).join("");
+    manualOrderForm?.addEventListener("input", updateSubtotal);
+    manualOrderForm?.addEventListener("change", updateSubtotal);
+    manualOrderForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(manualOrderForm);
+      const customerName = String(formData.get("customer_name") || "").trim();
+      const selectedIds = formData.getAll("product_id").map(String);
+      const items = selectedIds.map((id) => ({ id, ...getManualItem(id) })).filter((item) => item.product && item.quantity > 0);
+      const subtotal = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+      const deliveryMethod = String(formData.get("delivery_method") || "");
+      const deliveryFee = deliveryMethod.includes("الجامعة الأردنية") ? 0 : Number(formData.get("delivery_fee") || 0);
+      if (!customerName || !items.length || !Number.isFinite(deliveryFee) || deliveryFee < 0) {
+        if (message) message.textContent = "أضيفي الاسم والمنتجات وتحققي من رسوم التوصيل.";
+        return;
       }
-    }
-  }
-
-  manualOrderForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    if (!session) return;
-
-    const formData = new FormData(manualOrderForm);
-    const customerName = String(formData.get("customer_name") || "").trim();
-    const selectedProductIds = formData.getAll("product_id").map(String);
-    const items = selectedProductIds.flatMap((id) => {
-      const item = getManualItem(id);
-      return item.product && item.quantity > 0
-        ? [{
-            product_id: item.product.id,
-            name: item.product.name,
+      try {
+        const savedItems = await Promise.all(items.map(async (item) => {
+          const imageUrl = await uploadImage(item.id);
+          return {
+            product_id: item.product!.id,
+            name: item.product!.name,
             quantity: item.quantity,
             unit_price: item.unit_price,
-            customization: item.customization,
-          }]
-        : [];
-    });
-    const total = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
-    const deliveryFee = Number(formData.get("delivery_fee") || 0);
-    const deliveryMethod = String(formData.get("delivery_method") || "").trim();
-    const effectiveDeliveryFee = deliveryMethod === "استلام من الجامعة الأردنية" ? 0 : deliveryFee;
-    const notes = String(formData.get("notes") || "").trim();
-    const message = document.querySelector<HTMLParagraphElement>("#manual-order-message");
-
-    if (!customerName || items.length === 0 || !Number.isFinite(deliveryFee) || deliveryFee < 0) {
-      if (message) message.textContent = "أضيفي الاسم ومنتجًا واحدًا على الأقل، وتحققي من رسوم التوصيل.";
-      return;
-    }
-
-    const { error } = await supabase.from("orders").insert({
-      customer_name: customerName,
-      delivery_method: deliveryMethod,
-      delivery_fee: effectiveDeliveryFee,
-      notes: notes || null,
-      items,
-      total: total + effectiveDeliveryFee,
-      status: "new",
+            customization: { ...item.customization, image_url: imageUrl },
+          };
+        }));
+        const { error } = await supabase.from("orders").insert({
+          customer_name: customerName,
+          delivery_method: deliveryMethod,
+          delivery_fee: deliveryFee,
+          notes: String(formData.get("notes") || "").trim() || null,
+          items: savedItems,
+          total: subtotal + deliveryFee,
+          status: "new",
+        });
+        if (error) throw error;
+        window.location.reload();
+      } catch (error) {
+        console.error("Manual order save error:", error);
+        if (message) message.textContent = "تعذر حفظ الطلب أو الصورة. تحققي من إعدادات Supabase.";
+      }
     });
 
-    if (error) {
-
-  ordersList?.addEventListener("change", async (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLSelectElement) || !target.dataset.orderStatus) return;
-
-    target.disabled = true;
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: target.value })
-      .eq("id", target.dataset.orderStatus);
-
-    if (error) {
-      console.error("Order status update error:", error);
-      target.disabled = false;
-      return;
+    if (ordersList) {
+      const { data: orders, error } = await supabase.from("orders").select("id, customer_name, total, delivery_fee, delivery_method, status, items, created_at").order("created_at", { ascending: false });
+      if (error) {
+        ordersList.innerHTML = '<p class="orders-message">تعذر تحميل الطلبات.</p>';
+      } else {
+        const currentOrders = orders || [];
+        const monthStart = new Date();
+        monthStart.setDate(1);
+        monthStart.setHours(0, 0, 0, 0);
+        const monthOrders = currentOrders.filter((order) => new Date(order.created_at) >= monthStart);
+        document.querySelector("[data-stat-new]")!.textContent = String(currentOrders.filter((order) => order.status === "new").length);
+        document.querySelector("[data-stat-processing]")!.textContent = String(currentOrders.filter((order) => order.status === "processing").length);
+        document.querySelector("[data-stat-month-orders]")!.textContent = String(monthOrders.length);
+        document.querySelector("[data-stat-sales]")!.textContent = `${monthOrders.reduce((sum, order) => sum + getSalesAmount(order), 0).toFixed(2)} د.أ`;
+        ordersList.innerHTML = currentOrders.length ? currentOrders.map((order) => {
+          const status = order.status in statusLabels ? order.status : "new";
+          const images = (order.items || []).map((item: any) => item.customization?.image_url).filter(Boolean).map((url: string) => `<a class="order-image-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">صورة</a>`).join("");
+          return `<article class="order-card"><div class="order-main"><div class="order-number"><span>طلب</span><strong>#${order.id.slice(0, 8).toUpperCase()}</strong></div><div class="order-customer"><strong>${escapeHtml(order.customer_name || "بدون اسم")}</strong><span>${new Intl.DateTimeFormat("ar-JO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.created_at))}</span></div><div class="order-status"><select class="order-status-select status-${status}" data-order-status="${order.id}" aria-label="تغيير حالة الطلب">${Object.entries(statusLabels).map(([value, label]) => `<option value="${value}" ${value === status ? "selected" : ""}>${label}</option>`).join("")}</select></div><strong class="order-total">${Number(order.total || 0).toFixed(2)} د.أ</strong>${images}</div></article>`;
+        }).join("") : '<p class="orders-message">لا توجد طلبات حتى الآن.</p>';
+      }
     }
 
-    window.location.reload();
-  });
-      console.error("Manual order error:", error);
-      if (message) message.textContent = "تعذر إضافة الطلب. تحققي من إعدادات Supabase.";
-      return;
-    }
-
-    window.location.reload();
-  });
+    ordersList?.addEventListener("change", async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLSelectElement) || !target.dataset.orderStatus) return;
+      target.disabled = true;
+      const { error } = await supabase.from("orders").update({ status: target.value }).eq("id", target.dataset.orderStatus);
+      if (error) {
+        target.disabled = false;
+        console.error("Order status update error:", error);
+      } else {
+        window.location.reload();
+      }
+    });
   });
 </script>
 <main class="admin-shell">
@@ -406,6 +278,16 @@ import { products } from "../../data/product";
                     ) : null}
                   </span>
                 ))}
+                {product.customization?.imageUpload ? (
+                  <span class="manual-customization">
+                    <input
+                      name={`image-${product.id}`}
+                      type="file"
+                      accept="image/*"
+                      aria-label={`صورة ${product.name}`}
+                    />
+                  </span>
+                ) : null}
               </label>
             ))}
           </fieldset>

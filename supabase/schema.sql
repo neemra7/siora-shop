@@ -42,3 +42,17 @@ create policy "Users can manage their own push subscriptions"
   to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+insert into storage.buckets (id, name, public)
+values ('order-images', 'order-images', true)
+on conflict (id) do update set public = true;
+
+create policy "Authenticated admins can upload order images"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'order-images');
+
+create policy "Anyone can view order images"
+  on storage.objects for select
+  to public
+  using (bucket_id = 'order-images');
