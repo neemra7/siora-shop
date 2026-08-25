@@ -13,7 +13,7 @@ import { products } from "../../data/product";
 
   <body class="admin-page">
     <script type="application/json" id="products-data">{JSON.stringify(products)}</script>
-    <script lang="ts">
+    <script lang="ts" type="module">
   import { supabase } from "../../lib/supabase";
 
       const products = JSON.parse(document.querySelector<HTMLScriptElement>("#products-data")?.textContent || "[]");

@@ -571,539 +571,353 @@ const cartProducts = Object.fromEntries(
          CART JAVASCRIPT
     ========================== -->
 
-    <script define:vars={{ cartProducts }}>
-      import { supabase } from '../../lib/supabase';
-
-      const cart = new Map();
-      const customizations = new Map();
-      const orderExtras = { chocolate: false, giftWrap: false };
-
-      const drawer =
-        document.querySelector("[data-cart-drawer]");
-
-      const items =
-        document.querySelector("[data-cart-items]");
-
-      const count =
-        document.querySelector("[data-cart-count]");
-
-      const total =
-        document.querySelector("[data-cart-total]");
-
-      const productData = cartProducts;
-      const deliverySelect = document.querySelector("[data-delivery-select]");
-      const addressField = document.querySelector("[data-address-field]");
-      const addressInput = addressField?.querySelector("input[name='address']");
-
-      const getDeliveryFee = () => Number(deliverySelect?.selectedOptions[0]?.dataset.deliveryFee || 0);
-      const getDeliveryLabel = () => deliverySelect?.selectedOptions[0]?.textContent?.trim() || "لم يتم الاختيار";
-
-      const updateDeliveryFields = () => {
-        const isDelivery = deliverySelect?.value.startsWith("delivery_") || false;
-        if (addressField) addressField.hidden = !isDelivery;
-        addressInput?.toggleAttribute("required", isDelivery);
-      };
-
-      const getCustomization = (id) => customizations.get(id) || { choices: {}, text: {}, imageName: "", imageFile: null };
-
-      const uploadOrderImage = async (file) => {
-        if (!file) return null;
-        const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-        const path = `${crypto.randomUUID()}.${extension}`;
-        const { error } = await supabase.storage
-          .from("order-images")
-          .upload(path, file, { contentType: file.type, upsert: false });
-        if (error) throw error;
-        return supabase.storage.from("order-images").getPublicUrl(path).data.publicUrl;
-      };
-
-      const getItemPrice = (id) => {
-        const product = productData[id];
-        const selection = getCustomization(id);
-        const addOns = product.customization?.groups.flatMap((group) => group.options)
-          .filter((option) => Object.values(selection.choices).includes(option.label))
-          .reduce((sum, option) => sum + (option.price || 0), 0) || 0;
-        return product.price + addOns;
-      };
-
-      const renderCustomizationGroup = (id, group, groupIndex) => {
-        const selection = getCustomization(id);
-        const selected = selection.choices[groupIndex] || "";
-        const text = selection.text[groupIndex] || "";
-        const select = group.options.length
-          ? `<select data-cart-option="${id}" data-cart-group="${groupIndex}"><option value="">اختاري الآن</option>${group.options.map((option) => `<option value="${option.label}" ${selected === option.label ? "selected" : ""}>${option.label}${option.price ? ` (+${option.price} د.أ)` : ""}</option>`).join("")}</select>`
-          : `<input type="text" value="${text}" placeholder="${group.textInput?.placeholder || ""}" data-cart-text="${id}" data-cart-group="${groupIndex}" ${group.textInput?.optional ? "" : "required"} />`;
-        const engraving = group.textWhen === selected
-          ? `<input type="text" value="${text}" placeholder="${group.textInput?.placeholder || ""}" data-cart-text="${id}" data-cart-group="${groupIndex}" />`
-          : "";
-        return `<label class="cart-item-option">${group.label}${select}${engraving}</label>`;
-      };
-
-
-      if (!drawer || !items || !count || !total) {
-        throw new Error("Cart elements are missing");
-      }
-
-
-      function renderCart() {
-
-        const selected = [...cart.entries()];
-
-
-        const quantity = selected.reduce(
-          (sum, [, value]) => sum + value,
-          0
-        );
-
-
-        const extrasTotal = Object.values(orderExtras).filter(Boolean).length;
-        const amount = selected.reduce(
-          (sum, [id, value]) =>
-            sum + getItemPrice(id) * value,
-          0
-        ) + extrasTotal + getDeliveryFee();
-
-
-        count.textContent = String(quantity);
-
-        total.textContent =
-          `${amount} د.أ`;
-
-
-        if (selected.length === 0) {
-
-          items.innerHTML = `
-            <p class="empty-cart">
-              سلتك فارغة حاليًا.
-              <br />
-              اختاري قطعة وابدئي الحكاية.
-            </p>
-          `;
-
-          return;
-        }
-
-
-        items.innerHTML = selected
-          .map(([id, value]) => {
-
-            const product = productData[id];
-
-            return `
-              <div class="cart-item">
-
-                <div class="cart-item-image">
-                  <img
-                    src="${product.image}"
-                    alt="${product.name}"
-                  />
-                </div>
-
-                <div class="cart-item-info">
-
-                  <h3>
-                    ${product.name}
-                  </h3>
-
-                  ${product.customization ? `<div class="cart-customizations">${product.customization.groups.map((group, groupIndex) => renderCustomizationGroup(id, group, groupIndex)).join("")}${product.customization.imageUpload ? `<label class="cart-item-option">إضافة صورة<input type="file" accept="image/*" data-cart-image="${id}" required />${getCustomization(id).imageName ? `<small class="uploaded-file">${getCustomization(id).imageName}</small>` : ""}</label>` : ""}</div>` : ""}
-
-                  <p>
-                    ${getItemPrice(id)} د.أ
-                  </p>
-
-
-                  <div class="cart-item-controls">
-
-                    <button
-                      class="quantity-button"
-                      data-minus="${id}"
-                      type="button"
-                    >
-                      −
-                    </button>
-
-                    <b>
-                      ${value}
-                    </b>
-
-                    <button
-                      class="quantity-button"
-                      data-plus="${id}"
-                      type="button"
-                    >
-                      +
-                    </button>
-
-                  </div>
-
-
-                  <button
-                    class="cart-item-remove"
-                    data-remove="${id}"
-                    type="button"
-                  >
-                    إزالة
-                  </button>
-
-                </div>
-
-              </div>
-            `;
-
-          })
-          .join("");
-      }
-
-
-      function openCart() {
-
-        drawer.classList.add("is-open");
-
-        drawer.setAttribute(
-          "aria-hidden",
-          "false"
-        );
-
-        document.body.classList.add("cart-open");
-      }
-
-
-      function closeCart() {
-
-        drawer.classList.remove("is-open");
-
-        drawer.setAttribute(
-          "aria-hidden",
-          "true"
-        );
-
-        document.body.classList.remove("cart-open");
-      }
-
-
-      const carouselTrack =
-        document.querySelector("[data-carousel-track]");
-
-      const carouselStep = () => {
-        if (!carouselTrack) return 0;
-        const card = carouselTrack.querySelector(".product-card");
-        return card ? card.offsetWidth + 20 : 0;
-      };
-
-      const moveCarousel = (direction) => {
-        if (!carouselTrack) return;
-        const maximumScroll = carouselTrack.scrollWidth - carouselTrack.clientWidth;
-        const currentScroll = carouselTrack.scrollLeft;
-        const step = carouselStep();
-        const targetScroll = currentScroll + direction * step;
-        const wrappedScroll = direction > 0 && targetScroll >= maximumScroll
-          ? 0
-          : direction < 0 && targetScroll <= 0
-            ? maximumScroll
-            : targetScroll;
-        carouselTrack.scrollTo({
-          left: Math.max(0, Math.min(wrappedScroll, maximumScroll)),
-          behavior: "smooth",
-        });
-      };
-
-      document.querySelector("[data-carousel-previous]")?.addEventListener("click", () => moveCarousel(-1));
-      document.querySelector("[data-carousel-next]")?.addEventListener("click", () => moveCarousel(1));
-
-      let carouselTimer = window.setInterval(() => moveCarousel(1), 4500);
-      if (carouselTrack instanceof HTMLElement) {
-        carouselTrack.addEventListener("mouseenter", () => window.clearInterval(carouselTimer));
-        carouselTrack.addEventListener("mouseleave", () => {
-          carouselTimer = window.setInterval(() => moveCarousel(1), 4500);
-        });
-      }
-
-      const customerForm =
-        document.querySelector("[data-customer-form]");
-      const formMessage =
-        document.querySelector("[data-form-message]");
-      const checkoutButton =
-        document.querySelector("[data-checkout]");
-
-      checkoutButton?.addEventListener("click", async () => {
-        if (!customerForm || !formMessage) return;
-        if (!customerForm.reportValidity()) return;
-        if (cart.size === 0) {
-          formMessage.textContent = "أضيفي قطعة واحدة على الأقل قبل إتمام الطلب.";
-          return;
-        }
-        const missingImage = [...cart.keys()].find((id) =>
-          productData[id].customization?.imageUpload && !getCustomization(id).imageName
-        );
-        if (missingImage) {
-          formMessage.textContent = `أضيفي صورة لمنتج «${productData[missingImage].name}» قبل إتمام الطلب.`;
-          return;
-        }
-        const fields = new FormData(customerForm);
-        const customerDetails = [
-          `الاسم الرباعي: ${fields.get("fullName") || ""}`,
-          `رقم الهاتف: ${fields.get("phone") || ""}`,
-          `الإيميل: ${fields.get("email") || ""}`,
-          `حساب الانستغرام: ${fields.get("instagram") || ""}`,
-          `العنوان: ${fields.get("address") || ""}`,
-          `طريقة الاستلام: ${getDeliveryLabel()}`,
-          `رسوم الاستلام: ${getDeliveryFee()} د.أ`,
-          `ملاحظات: ${fields.get("notes") || "لا يوجد"}`,
-        ].join("\n");
-        const orderLines = [...cart.entries()].map(([id, quantity]) => {
-          const selection = getCustomization(id);
-          const choices = Object.values(selection.choices).filter(Boolean).join("، ");
-          const text = Object.values(selection.text).filter(Boolean).join("، ");
-          return `${productData[id].name} × ${quantity} - ${getItemPrice(id)} د.أ${choices ? `\n  الخيارات: ${choices}` : ""}${text ? `\n  التفاصيل: ${text}` : ""}${selection.imageName ? `\n  الصورة: ${selection.imageName}` : ""}`;
-        }).join("\n");
-        const extras = Object.entries(orderExtras).filter(([, selected]) => selected)
-          .map(([extra]) => extra === "chocolate" ? "إضافة شوكولاتة (+1 JD)" : "تغليف هدية (+1 JD)")
-          .join("، ") || "لا يوجد";
-        const body = `طلب جديد من سيورا آرت\n\n${customerDetails}\n\nالمنتجات:\n${orderLines || "لا يوجد"}\n\nالإضافات: ${extras}\nالمجموع: ${total.textContent}`;
-        fields.append("_subject", "طلب جديد من سيورا آرت");
-        fields.append("message", body);
-        fields.append("_captcha", "false");
-        fields.append("_template", "table");
-        checkoutButton.setAttribute("disabled", "true");
-        formMessage.textContent = "جاري إرسال الطلب...";
-
-try {
-  const items = await Promise.all([...cart.entries()].map(async ([id, quantity]) => {
-    const selection = getCustomization(id);
-    const imageUrl = await uploadOrderImage(selection.imageFile);
-
-    return {
-      product_id: id,
-      name: productData[id].name,
-      quantity,
-      unit_price: getItemPrice(id),
-      customization: {
-        choices: selection.choices,
-        text: selection.text,
-        image_name: selection.imageName || null,
-        image_url: imageUrl,
-      },
-    };
-  }));
-
-  const extras = {
-    chocolate: orderExtras.chocolate,
-    giftWrap: orderExtras.giftWrap,
+   <script define:vars={{ cartProducts }}>
+  import { supabase } from '../../lib/supabase';
+
+  const cart = new Map();
+  const customizations = new Map();
+  const orderExtras = { chocolate: false, giftWrap: false };
+
+  const drawer = document.querySelector("[data-cart-drawer]");
+  const items = document.querySelector("[data-cart-items]");
+  const count = document.querySelector("[data-cart-count]");
+  const total = document.querySelector("[data-cart-total]");
+  const productData = cartProducts;
+  const deliverySelect = document.querySelector("[data-delivery-select]");
+  const addressField = document.querySelector("[data-address-field]");
+  const addressInput = addressField?.querySelector("input[name='address']");
+
+  const getDeliveryFee = () => Number(deliverySelect?.selectedOptions[0]?.dataset.deliveryFee || 0);
+  const getDeliveryLabel = () => deliverySelect?.selectedOptions[0]?.textContent?.trim() || "لم يتم الاختيار";
+
+  const updateDeliveryFields = () => {
+    const isDelivery = deliverySelect?.value.startsWith("delivery_") || false;
+    if (addressField) addressField.hidden = !isDelivery;
+    addressInput?.toggleAttribute("required", isDelivery);
   };
 
-  const { error } = await supabase
-    .from("orders")
-    .insert({
-      customer_name: fields.get("fullName"),
-      customer_email: fields.get("email"),
-      customer_phone: fields.get("phone"),
-      instagram: fields.get("instagram"),
-      delivery_method: getDeliveryLabel(),
-      delivery_fee: getDeliveryFee(),
-      address: fields.get("address") || null,
-      notes: fields.get("notes") || null,
-      items,
-      extras,
-      total: Number(
-        total.textContent
-          ?.replace("د.أ", "")
-          .trim()
-          .replace(",", ".")
-      ) || 0,
-      status: "new",
-    });
+  const getCustomization = (id) => customizations.get(id) || { choices: {}, text: {}, imageName: "", imageFile: null };
 
-  if (error) {
-    console.error("Supabase order error:", error);
-    throw error;
+  // ✅ FIXED: Safe upload function using supabase
+  const uploadOrderImage = async (file) => {
+    if (!file) return null;
+    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage
+      .from("order-images")
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (error) throw error;
+    return supabase.storage.from("order-images").getPublicUrl(path).data.publicUrl;
+  };
+
+  const getItemPrice = (id) => {
+    const product = productData[id];
+    const selection = getCustomization(id);
+    const addOns = product.customization?.groups.flatMap((group) => group.options)
+      .filter((option) => Object.values(selection.choices).includes(option.label))
+      .reduce((sum, option) => sum + (option.price || 0), 0) || 0;
+    return product.price + addOns;
+  };
+
+  const renderCustomizationGroup = (id, group, groupIndex) => {
+    const selection = getCustomization(id);
+    const selected = selection.choices[groupIndex] || "";
+    const text = selection.text[groupIndex] || "";
+    const select = group.options.length
+      ? `<select data-cart-option="${id}" data-cart-group="${groupIndex}"><option value="">اختاري الآن</option>${group.options.map((option) => `<option value="${option.label}" ${selected === option.label ? "selected" : ""}>${option.label}${option.price ? ` (+${option.price} د.أ)` : ""}</option>`).join("")}</select>`
+      : `<input type="text" value="${text}" placeholder="${group.textInput?.placeholder || ""}" data-cart-text="${id}" data-cart-group="${groupIndex}" ${group.textInput?.optional ? "" : "required"} />`;
+    const engraving = group.textWhen === selected
+      ? `<input type="text" value="${text}" placeholder="${group.textInput?.placeholder || ""}" data-cart-text="${id}" data-cart-group="${groupIndex}" />`
+      : "";
+    return `<label class="cart-item-option">${group.label}${select}${engraving}</label>`;
+  };
+
+  if (!drawer || !items || !count || !total) {
+    throw new Error("Cart elements are missing");
   }
 
-  formMessage.textContent =
-    "تم إرسال طلبك بنجاح. سنتواصل معك قريبًا.";
+  function renderCart() {
+    const selected = [...cart.entries()];
+    const quantity = selected.reduce((sum, [, value]) => sum + value, 0);
+    const extrasTotal = Object.values(orderExtras).filter(Boolean).length;
+    const amount = selected.reduce((sum, [id, value]) => sum + getItemPrice(id) * value, 0) + extrasTotal + getDeliveryFee();
+    count.textContent = String(quantity);
+    total.textContent = `${amount} د.أ`;
+    if (selected.length === 0) {
+      items.innerHTML = `
+        <p class="empty-cart">
+          سلتك فارغة حاليًا.
+          <br />
+          اختاري قطعة وابدئي الحكاية.
+        </p>
+      `;
+      return;
+    }
+    items.innerHTML = selected.map(([id, value]) => {
+      const product = productData[id];
+      return `
+        <div class="cart-item">
+          <div class="cart-item-image">
+            <img src="${product.image}" alt="${product.name}" />
+          </div>
+          <div class="cart-item-info">
+            <h3>${product.name}</h3>
+            ${product.customization ? `<div class="cart-customizations">${product.customization.groups.map((group, groupIndex) => renderCustomizationGroup(id, group, groupIndex)).join("")}${product.customization.imageUpload ? `<label class="cart-item-option">إضافة صورة<input type="file" accept="image/*" data-cart-image="${id}" required />${getCustomization(id).imageName ? `<small class="uploaded-file">${getCustomization(id).imageName}</small>` : ""}</label>` : ""}</div>` : ""}
+            <p>${getItemPrice(id)} د.أ</p>
+            <div class="cart-item-controls">
+              <button class="quantity-button" data-minus="${id}" type="button">−</button>
+              <b>${value}</b>
+              <button class="quantity-button" data-plus="${id}" type="button">+</button>
+            </div>
+            <button class="cart-item-remove" data-remove="${id}" type="button">إزالة</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
 
-  customerForm.reset();
-  updateDeliveryFields();
+  function openCart() {
+    drawer.classList.add("is-open");
+    drawer.setAttribute("aria-hidden", "false");
+    document.body.classList.add("cart-open");
+  }
 
-  cart.clear();
-  customizations.clear();
+  function closeCart() {
+    drawer.classList.remove("is-open");
+    drawer.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("cart-open");
+  }
 
-  orderExtras.chocolate = false;
-  orderExtras.giftWrap = false;
+  const carouselTrack = document.querySelector("[data-carousel-track]");
+  const carouselStep = () => {
+    if (!carouselTrack) return 0;
+    const card = carouselTrack.querySelector(".product-card");
+    return card ? card.offsetWidth + 20 : 0;
+  };
+  const moveCarousel = (direction) => {
+    if (!carouselTrack) return;
+    const maximumScroll = carouselTrack.scrollWidth - carouselTrack.clientWidth;
+    const currentScroll = carouselTrack.scrollLeft;
+    const step = carouselStep();
+    const targetScroll = currentScroll + direction * step;
+    const wrappedScroll = direction > 0 && targetScroll >= maximumScroll ? 0 : direction < 0 && targetScroll <= 0 ? maximumScroll : targetScroll;
+    carouselTrack.scrollTo({
+      left: Math.max(0, Math.min(wrappedScroll, maximumScroll)),
+      behavior: "smooth",
+    });
+  };
+  document.querySelector("[data-carousel-previous]")?.addEventListener("click", () => moveCarousel(-1));
+  document.querySelector("[data-carousel-next]")?.addEventListener("click", () => moveCarousel(1));
+  let carouselTimer = window.setInterval(() => moveCarousel(1), 4500);
+  if (carouselTrack instanceof HTMLElement) {
+    carouselTrack.addEventListener("mouseenter", () => window.clearInterval(carouselTimer));
+    carouselTrack.addEventListener("mouseleave", () => {
+      carouselTimer = window.setInterval(() => moveCarousel(1), 4500);
+    });
+  }
 
-  renderCart();
+  const customerForm = document.querySelector("[data-customer-form]");
+  const formMessage = document.querySelector("[data-form-message]");
+  const checkoutButton = document.querySelector("[data-checkout]");
 
-} catch (error) {
+  checkoutButton?.addEventListener("click", async () => {
+    if (!customerForm || !formMessage) return;
+    if (!customerForm.reportValidity()) return;
+    if (cart.size === 0) {
+      formMessage.textContent = "أضيفي قطعة واحدة على الأقل قبل إتمام الطلب.";
+      return;
+    }
+    const missingImage = [...cart.keys()].find((id) =>
+      productData[id].customization?.imageUpload && !getCustomization(id).imageName
+    );
+    if (missingImage) {
+      formMessage.textContent = `أضيفي صورة لمنتج «${productData[missingImage].name}» قبل إتمام الطلب.`;
+      return;
+    }
+    const fields = new FormData(customerForm);
+    const customerDetails = [
+      `الاسم الرباعي: ${fields.get("fullName") || ""}`,
+      `رقم الهاتف: ${fields.get("phone") || ""}`,
+      `الإيميل: ${fields.get("email") || ""}`,
+      `حساب الانستغرام: ${fields.get("instagram") || ""}`,
+      `العنوان: ${fields.get("address") || ""}`,
+      `طريقة الاستلام: ${getDeliveryLabel()}`,
+      `رسوم الاستلام: ${getDeliveryFee()} د.أ`,
+      `ملاحظات: ${fields.get("notes") || "لا يوجد"}`,
+    ].join("\n");
+    const orderLines = [...cart.entries()].map(([id, quantity]) => {
+      const selection = getCustomization(id);
+      const choices = Object.values(selection.choices).filter(Boolean).join("، ");
+      const text = Object.values(selection.text).filter(Boolean).join("، ");
+      return `${productData[id].name} × ${quantity} - ${getItemPrice(id)} د.أ${choices ? `\n  الخيارات: ${choices}` : ""}${text ? `\n  التفاصيل: ${text}` : ""}${selection.imageName ? `\n  الصورة: ${selection.imageName}` : ""}`;
+    }).join("\n");
+    const extras = Object.entries(orderExtras).filter(([, selected]) => selected)
+      .map(([extra]) => extra === "chocolate" ? "إضافة شوكولاتة (+1 JD)" : "تغليف هدية (+1 JD)")
+      .join("، ") || "لا يوجد";
+    const body = `طلب جديد من سيورا آرت\n\n${customerDetails}\n\nالمنتجات:\n${orderLines || "لا يوجد"}\n\nالإضافات: ${extras}\nالمجموع: ${total.textContent}`;
+    fields.append("_subject", "طلب جديد من سيورا آرت");
+    fields.append("message", body);
+    fields.append("_captcha", "false");
+    fields.append("_template", "table");
+    checkoutButton.setAttribute("disabled", "true");
+    formMessage.textContent = "جاري إرسال الطلب...";
 
-  console.error(error);
+    try {
+      const items = await Promise.all([...cart.entries()].map(async ([id, quantity]) => {
+        const selection = getCustomization(id);
+        const imageUrl = await uploadOrderImage(selection.imageFile);
+        return {
+          product_id: id,
+          name: productData[id].name,
+          quantity,
+          unit_price: getItemPrice(id),
+          customization: {
+            choices: selection.choices,
+            text: selection.text,
+            image_name: selection.imageName || null,
+            image_url: imageUrl,
+          },
+        };
+      }));
 
-  formMessage.textContent =
-    "تعذر إرسال الطلب الآن. تحققي من الاتصال وحاولي مرة أخرى.";
-
-} finally {
-
-  checkoutButton.removeAttribute("disabled");
-}
-      });
-
-      const addToCart = (button) => {
-        const id = button.getAttribute("data-add-to-cart");
-        if (!id || !productData[id]) return;
-        cart.set(id, (cart.get(id) || 0) + 1);
-        renderCart();
-        openCart();
+      const extras = {
+        chocolate: orderExtras.chocolate,
+        giftWrap: orderExtras.giftWrap,
       };
 
-      document.querySelectorAll("[data-add-to-cart]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.preventDefault();
-          addToCart(button);
+      const { error } = await supabase
+        .from("orders")
+        .insert({
+          customer_name: fields.get("fullName"),
+          customer_email: fields.get("email"),
+          customer_phone: fields.get("phone"),
+          instagram: fields.get("instagram"),
+          delivery_method: getDeliveryLabel(),
+          delivery_fee: getDeliveryFee(),
+          address: fields.get("address") || null,
+          notes: fields.get("notes") || null,
+          items,
+          extras,
+          total: Number(total.textContent?.replace("د.أ", "").trim().replace(",", ".")) || 0,
+          status: "new",
         });
-      });
 
+      if (error) {
+        console.error("Supabase order error:", error);
+        throw error;
+      }
 
-      document.addEventListener(
-        "click",
-        (event) => {
-
-          const target =
-            event.target;
-
-          if (!(target instanceof HTMLElement)) {
-            return;
-          }
-
-          const plusId =
-            target.dataset.plus;
-
-          const minusId =
-            target.dataset.minus;
-
-          const removeId =
-            target.dataset.remove;
-
-
-          if (plusId && productData[plusId]) {
-
-            cart.set(
-              plusId,
-              (cart.get(plusId) || 0) + 1
-            );
-
-            renderCart();
-
-            return;
-          }
-
-
-          if (minusId && productData[minusId]) {
-
-            const next =
-              (cart.get(minusId) || 0) - 1;
-
-
-            if (next > 0) {
-              cart.set(minusId, next);
-            } else {
-              cart.delete(minusId);
-            }
-
-
-            renderCart();
-
-            return;
-          }
-
-
-          if (removeId && productData[removeId]) {
-
-            cart.delete(removeId);
-            customizations.delete(removeId);
-
-            renderCart();
-          }
-
-        }
-      );
-
-
-      document.addEventListener("change", (event) => {
-        const target = event.target;
-        if (!(target instanceof HTMLSelectElement)) return;
-        const id = target.dataset.cartOption;
-        if (!id || !productData[id]) return;
-        const selection = getCustomization(id);
-        selection.choices[target.dataset.cartGroup] = target.value;
-        customizations.set(id, selection);
-        renderCart();
-      });
-
-
-      document.addEventListener("change", (event) => {
-        const target = event.target;
-        if (!(target instanceof HTMLInputElement) || !target.dataset.cartText) return;
-        const id = target.dataset.cartText;
-        if (!productData[id]) return;
-        const selection = getCustomization(id);
-        selection.text[target.dataset.cartGroup] = target.value;
-        customizations.set(id, selection);
-      });
-
-
-      document.querySelectorAll("[data-extra]").forEach((input) => {
-        input.addEventListener("change", () => {
-          orderExtras[input.dataset.extra] = input.checked;
-          renderCart();
-        });
-      });
-
-      deliverySelect?.addEventListener("change", () => {
-        updateDeliveryFields();
-        renderCart();
-      });
-
+      formMessage.textContent = "تم إرسال طلبك بنجاح. سنتواصل معك قريبًا.";
+      customerForm.reset();
       updateDeliveryFields();
-
-
-      document.addEventListener("change", (event) => {
-        const target = event.target;
-        if (!(target instanceof HTMLInputElement) || target.type !== "file") return;
-        const id = target.dataset.cartImage;
-        if (!id || !productData[id]) return;
-        const selection = getCustomization(id);
-        selection.imageName = target.files?.[0]?.name || "";
-        selection.imageFile = target.files?.[0] || null;
-        customizations.set(id, selection);
-      });
-
-
-      document
-        .querySelectorAll("[data-cart-open]")
-        .forEach((button) => {
-
-          button.addEventListener(
-            "click",
-            openCart
-          );
-
-        });
-
-
-      document
-        .querySelectorAll("[data-cart-close]")
-        .forEach((button) => {
-
-          button.addEventListener(
-            "click",
-            closeCart
-          );
-
-        });
-
-
+      cart.clear();
+      customizations.clear();
+      orderExtras.chocolate = false;
+      orderExtras.giftWrap = false;
       renderCart();
 
-    </script>
+    } catch (error) {
+      console.error(error);
+      formMessage.textContent = "تعذر إرسال الطلب الآن. تحققي من الاتصال وحاولي مرة أخرى.";
+    } finally {
+      checkoutButton.removeAttribute("disabled");
+    }
+  });
 
+  const addToCart = (button) => {
+    const id = button.getAttribute("data-add-to-cart");
+    if (!id || !productData[id]) return;
+    cart.set(id, (cart.get(id) || 0) + 1);
+    renderCart();
+    openCart();
+  };
+
+  document.querySelectorAll("[data-add-to-cart]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      addToCart(button);
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const plusId = target.dataset.plus;
+    const minusId = target.dataset.minus;
+    const removeId = target.dataset.remove;
+    if (plusId && productData[plusId]) {
+      cart.set(plusId, (cart.get(plusId) || 0) + 1);
+      renderCart();
+      return;
+    }
+    if (minusId && productData[minusId]) {
+      const next = (cart.get(minusId) || 0) - 1;
+      if (next > 0) cart.set(minusId, next);
+      else cart.delete(minusId);
+      renderCart();
+      return;
+    }
+    if (removeId && productData[removeId]) {
+      cart.delete(removeId);
+      customizations.delete(removeId);
+      renderCart();
+    }
+  });
+
+  document.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    const id = target.dataset.cartOption;
+    if (!id || !productData[id]) return;
+    const selection = getCustomization(id);
+    selection.choices[target.dataset.cartGroup] = target.value;
+    customizations.set(id, selection);
+    renderCart();
+  });
+
+  document.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !target.dataset.cartText) return;
+    const id = target.dataset.cartText;
+    if (!productData[id]) return;
+    const selection = getCustomization(id);
+    selection.text[target.dataset.cartGroup] = target.value;
+    customizations.set(id, selection);
+  });
+
+  document.querySelectorAll("[data-extra]").forEach((input) => {
+    input.addEventListener("change", () => {
+      orderExtras[input.dataset.extra] = input.checked;
+      renderCart();
+    });
+  });
+
+  deliverySelect?.addEventListener("change", () => {
+    updateDeliveryFields();
+    renderCart();
+  });
+  updateDeliveryFields();
+
+  document.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || target.type !== "file") return;
+    const id = target.dataset.cartImage;
+    if (!id || !productData[id]) return;
+    const selection = getCustomization(id);
+    selection.imageName = target.files?.[0]?.name || "";
+    selection.imageFile = target.files?.[0] || null;
+    customizations.set(id, selection);
+  });
+
+  document.querySelectorAll("[data-cart-open]").forEach((button) => {
+    button.addEventListener("click", openCart);
+  });
+  document.querySelectorAll("[data-cart-close]").forEach((button) => {
+    button.addEventListener("click", closeCart);
+  });
+
+  renderCart();
+</script> 
   </body>
 
 </html>
