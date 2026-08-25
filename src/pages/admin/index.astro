@@ -63,6 +63,9 @@ import "../../styles/global.css";
     completed: "مكتمل",
     cancelled: "ملغي",
   };
+   const statusOptions = Object.entries(statusLabels)
+     .map(([value, label]) => `<option value="${value}">${label}</option>`)
+     .join("");
 
   const formatDate = (value: string) =>
     new Intl.DateTimeFormat("ar-JO", {
@@ -140,7 +143,11 @@ import "../../styles/global.css";
             <div class="order-main">
               <div class="order-number"><span>طلب</span><strong>#${order.id.slice(0, 8).toUpperCase()}</strong></div>
               <div class="order-customer"><strong>${escapeHtml(order.customer_name || "بدون اسم")}</strong><span>${formatDate(order.created_at)}</span></div>
-              <div class="order-status"><span class="status status-${status}">${label}</span></div>
+                <div class="order-status">
+                  <select class="order-status-select status-${status}" data-order-status="${order.id}" aria-label="تغيير حالة الطلب">
+                    ${statusOptions.replace(`value="${status}"`, `value="${status}" selected`)}
+                  </select>
+                </div>
               <strong class="order-total">${Number(order.total || 0).toFixed(2)} د.أ</strong>
               <button class="view-order" type="button">عرض الطلب <span>←</span></button>
             </div>
@@ -179,6 +186,25 @@ import "../../styles/global.css";
     });
 
     if (error) {
+
+  ordersList?.addEventListener("change", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement) || !target.dataset.orderStatus) return;
+
+    target.disabled = true;
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: target.value })
+      .eq("id", target.dataset.orderStatus);
+
+    if (error) {
+      console.error("Order status update error:", error);
+      target.disabled = false;
+      return;
+    }
+
+    window.location.reload();
+  });
       console.error("Manual order error:", error);
       if (message) message.textContent = "تعذر إضافة الطلب. تحققي من إعدادات Supabase.";
       return;
@@ -498,6 +524,19 @@ import "../../styles/global.css";
 
   .status-completed {
     background: #dcebdc;
+  }
+
+  .status-cancelled {
+    background: #f1d6d2;
+  }
+
+  .order-status-select {
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 999px;
+    color: #1f1b17;
+    font: inherit;
+    cursor: pointer;
   }
 
   .order-total {
